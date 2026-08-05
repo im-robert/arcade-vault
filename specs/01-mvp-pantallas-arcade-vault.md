@@ -1,6 +1,6 @@
 # SPEC 01 — MVP visual de Arcade Vault (migración de pantallas de referencia)
 
-> **Status:** Aprobado
+> **Status:** Implementado
 > **Depends on:** —
 > **Date:** 2026-08-04
 > **Objective:** Migrar las cinco pantallas del prototipo estático en `references/templates/` (biblioteca, detalle, reproductor, autenticación, salón de la fama) a rutas reales de Next.js con Tailwind v4, solo como capa visual sin lógica de juego.

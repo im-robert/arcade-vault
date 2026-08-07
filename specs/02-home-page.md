@@ -1,6 +1,6 @@
 # SPEC 02 — Home page (landing) y reubicación de la Biblioteca
 
-> **Status:** Aprobado
+> **Status:** Implementado
 > **Depends on:** SPEC 01
 > **Date:** 2026-08-07
 > **Objective:** Migrar la pantalla Home del prototipo en `references/templates/home-about/` a la ruta `/`, moviendo la Biblioteca actual (hoy en `/`) a `/games` y actualizando el Nav y todos los enlaces internos en consecuencia.

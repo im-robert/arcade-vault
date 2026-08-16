@@ -3,7 +3,8 @@
 import { use, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { notFound } from "next/navigation";
-import { GAMES } from "@/lib/data";
+import type { Game } from "@/lib/games";
+import { createClient } from "@/lib/supabase/client";
 import { getUser, saveScore } from "@/lib/session";
 import AsteroidsGame, {
   type AsteroidsGameHandle,
@@ -17,7 +18,8 @@ export default function GamePlayerPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
-  const game = GAMES.find((g) => g.id === id);
+  const [game, setGame] = useState<Game | null>(null);
+  const [loading, setLoading] = useState(true);
   const isAsteroids = game?.id === "asteroids";
 
   const [score, setScore] = useState(0);
@@ -34,7 +36,34 @@ export default function GamePlayerPage({
     setName(user ? user.name : "INVITADO");
   }, []);
 
-  if (!game) notFound();
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+    supabase
+      .from("games")
+      .select("id, title, short, long, cat, cover, color")
+      .eq("id", id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return;
+        setGame(
+          data
+            ? {
+                ...(data as Omit<Game, "best" | "plays">),
+                best: 0,
+                plays: "0",
+              }
+            : null,
+        );
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  if (!loading && !game) notFound();
+  if (!game) return null;
 
   const simulateGame = () => {
     setScore(Math.floor(1000 + Math.random() * 99000));
@@ -58,8 +87,8 @@ export default function GamePlayerPage({
     asteroidsRef.current?.restart();
   };
 
-  const handleSaveScore = () => {
-    saveScore({ game: game.id, score, name });
+  const handleSaveScore = async () => {
+    await saveScore({ game: game.id, score, name });
     setSaved(true);
   };
 

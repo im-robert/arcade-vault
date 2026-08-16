@@ -1,16 +1,10 @@
+import { createClient } from "@/lib/supabase/client";
+
 export interface AvUser {
   name: string;
 }
 
-export interface AvScoreEntry {
-  game: string;
-  score: number;
-  name: string;
-  at: number;
-}
-
 const USER_KEY = "av_user";
-const SCORES_KEY = "av_scores";
 
 export function getUser(): AvUser | null {
   try {
@@ -28,12 +22,15 @@ export function clearUser(): void {
   localStorage.removeItem(USER_KEY);
 }
 
-export function saveScore(entry: Omit<AvScoreEntry, "at">): void {
-  try {
-    const all: AvScoreEntry[] = JSON.parse(localStorage.getItem(SCORES_KEY) || "[]");
-    all.push({ ...entry, at: Date.now() });
-    localStorage.setItem(SCORES_KEY, JSON.stringify(all));
-  } catch {
-    // localStorage unavailable — silently ignore, matches prototype behavior
-  }
+export async function saveScore(entry: {
+  game: string;
+  score: number;
+  name: string;
+}): Promise<void> {
+  const supabase = createClient();
+  await supabase.from("scores").insert({
+    game_id: entry.game,
+    player_name: entry.name,
+    score: entry.score,
+  });
 }

@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import { useRouter } from "next/navigation";
-import type { Game } from "@/lib/data";
+import type { Game } from "@/lib/game-types";
 
 export default function GameCard({ game }: { game: Game }) {
   const router = useRouter();
@@ -26,7 +26,13 @@ export default function GameCard({ game }: { game: Game }) {
   };
 
   return (
-    <div ref={tiltRef} className="card" onMouseMove={onMove} onMouseLeave={onLeave} onClick={goToDetail}>
+    <div
+      ref={tiltRef}
+      className="card"
+      onMouseMove={onMove}
+      onMouseLeave={onLeave}
+      onClick={goToDetail}
+    >
       <div className="cover">
         <div className={"cover-bg " + game.cover}></div>
         <div className="label">{game.cat}</div>
@@ -40,7 +46,14 @@ export default function GameCard({ game }: { game: Game }) {
             <b>{game.best.toLocaleString("es-ES")}</b>
           </div>
           <button
-            className={"btn " + (game.color === "magenta" ? "magenta" : game.color === "yellow" ? "yellow" : "")}
+            className={
+              "btn " +
+              (game.color === "magenta"
+                ? "magenta"
+                : game.color === "yellow"
+                  ? "yellow"
+                  : "")
+            }
             onClick={(e) => {
               e.stopPropagation();
               goToDetail();

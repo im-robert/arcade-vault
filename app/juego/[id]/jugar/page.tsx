@@ -1,23 +1,33 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { notFound } from "next/navigation";
 import { GAMES } from "@/lib/data";
 import { getUser, saveScore } from "@/lib/session";
+import AsteroidsGame, {
+  type AsteroidsGameHandle,
+  type AsteroidsHudState,
+} from "@/components/games/AsteroidsGame";
 
-export default function GamePlayerPage({ params }: { params: Promise<{ id: string }> }) {
+export default function GamePlayerPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = use(params);
   const router = useRouter();
   const game = GAMES.find((g) => g.id === id);
+  const isAsteroids = game?.id === "asteroids";
 
   const [score, setScore] = useState(0);
-  const [lives] = useState(3);
-  const [level] = useState(1);
+  const [lives, setLives] = useState(3);
+  const [level, setLevel] = useState(1);
   const [paused, setPaused] = useState(false);
   const [over, setOver] = useState(false);
   const [name, setName] = useState("INVITADO");
   const [saved, setSaved] = useState(false);
+  const asteroidsRef = useRef<AsteroidsGameHandle>(null);
 
   useEffect(() => {
     const user = getUser();
@@ -31,11 +41,21 @@ export default function GamePlayerPage({ params }: { params: Promise<{ id: strin
     setOver(true);
   };
 
+  const handleAsteroidsHud = (hud: AsteroidsHudState) => {
+    setScore(hud.score);
+    setLives(hud.lives);
+    setLevel(hud.level);
+    if (hud.status === "gameover") setOver(true);
+  };
+
   const restart = () => {
     setScore(0);
+    setLives(3);
+    setLevel(1);
     setPaused(false);
     setOver(false);
     setSaved(false);
+    asteroidsRef.current?.restart();
   };
 
   const handleSaveScore = () => {
@@ -70,10 +90,15 @@ export default function GamePlayerPage({ params }: { params: Promise<{ id: strin
           <button className="btn yellow" onClick={() => setPaused((p) => !p)}>
             {paused ? "REANUDAR" : "PAUSA"}
           </button>
-          <button className="btn magenta" onClick={simulateGame}>
-            SIMULAR PARTIDA
-          </button>
-          <button className="btn ghost" onClick={() => router.push(`/juego/${game.id}`)}>
+          {!isAsteroids && (
+            <button className="btn magenta" onClick={simulateGame}>
+              SIMULAR PARTIDA
+            </button>
+          )}
+          <button
+            className="btn ghost"
+            onClick={() => router.push(`/juego/${game.id}`)}
+          >
             SALIR
           </button>
         </div>
@@ -81,20 +106,39 @@ export default function GamePlayerPage({ params }: { params: Promise<{ id: strin
 
       <div className="crt">
         <div className="crt-screen">
-          <div className="game-arena">
-            <div className="grid-floor"></div>
-            <div className="enemy e1"></div>
-            <div className="enemy e2"></div>
-            <div className="enemy e3"></div>
-            <div className="player-ship"></div>
-          </div>
+          {isAsteroids ? (
+            <AsteroidsGame
+              ref={asteroidsRef}
+              paused={paused}
+              onHudChange={handleAsteroidsHud}
+            />
+          ) : (
+            <div className="game-arena">
+              <div className="grid-floor"></div>
+              <div className="enemy e1"></div>
+              <div className="enemy e2"></div>
+              <div className="enemy e3"></div>
+              <div className="player-ship"></div>
+            </div>
+          )}
           {paused && (
-            <div className="crt-content" style={{ background: "rgba(0,0,0,0.6)", zIndex: 5 }}>
+            <div
+              className="crt-content"
+              style={{ background: "rgba(0,0,0,0.6)", zIndex: 5 }}
+            >
               <div>
                 <div className="pixel neon-yellow" style={{ fontSize: 22 }}>
                   EN PAUSA
                 </div>
-                <div className="mono" style={{ fontSize: 11, color: "var(--ink-dim)", marginTop: 10, letterSpacing: "0.16em" }}>
+                <div
+                  className="mono"
+                  style={{
+                    fontSize: 11,
+                    color: "var(--ink-dim)",
+                    marginTop: 10,
+                    letterSpacing: "0.16em",
+                  }}
+                >
                   PULSA REANUDAR PARA CONTINUAR
                 </div>
               </div>
@@ -103,11 +147,14 @@ export default function GamePlayerPage({ params }: { params: Promise<{ id: strin
         </div>
         <div className="crt-bottom">
           <span className="led">SEÑAL OK</span>
-          <span>
-            {game.title} · CRT-83 · 60 HZ
-          </span>
+          <span>{game.title} · CRT-83 · 60 HZ</span>
           <span>CARGA · 1MB</span>
         </div>
+        {isAsteroids && (
+          <div className="crt-keys-hint">
+            ← → ROTAR · ↑ PROPULSAR · ESPACIO DISPARAR
+          </div>
+        )}
       </div>
 
       {over && (
@@ -120,7 +167,9 @@ export default function GamePlayerPage({ params }: { params: Promise<{ id: strin
               <div className="input-row">
                 <input
                   value={name}
-                  onChange={(e) => setName(e.target.value.toUpperCase().slice(0, 10))}
+                  onChange={(e) =>
+                    setName(e.target.value.toUpperCase().slice(0, 10))
+                  }
                   placeholder="TUS INICIALES"
                 />
                 <button className="btn yellow" onClick={handleSaveScore}>
@@ -134,7 +183,10 @@ export default function GamePlayerPage({ params }: { params: Promise<{ id: strin
               <button className="btn" onClick={restart}>
                 JUGAR DE NUEVO
               </button>
-              <button className="btn magenta" onClick={() => router.push("/games")}>
+              <button
+                className="btn magenta"
+                onClick={() => router.push("/games")}
+              >
                 VOLVER AL VAULT
               </button>
             </div>

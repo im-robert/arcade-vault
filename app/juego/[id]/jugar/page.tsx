@@ -10,6 +10,18 @@ import AsteroidsGame, {
   type AsteroidsGameHandle,
   type AsteroidsHudState,
 } from "@/components/games/AsteroidsGame";
+import CaidaGame, {
+  type CaidaGameHandle,
+  type CaidaHudState,
+} from "@/components/games/CaidaGame";
+import ArkanoidGame, {
+  type ArkanoidGameHandle,
+  type ArkanoidHudState,
+} from "@/components/games/ArkanoidGame";
+import SnakeGame, {
+  type SnakeGameHandle,
+  type SnakeHudState,
+} from "@/components/games/SnakeGame";
 
 export default function GamePlayerPage({
   params,
@@ -21,6 +33,9 @@ export default function GamePlayerPage({
   const [game, setGame] = useState<Game | null>(null);
   const [loading, setLoading] = useState(true);
   const isAsteroids = game?.id === "asteroids";
+  const isCaida = game?.id === "caida";
+  const isArkanoid = game?.id === "bloque-buster";
+  const isSnake = game?.id === "serpentina";
 
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
@@ -30,6 +45,9 @@ export default function GamePlayerPage({
   const [name, setName] = useState("INVITADO");
   const [saved, setSaved] = useState(false);
   const asteroidsRef = useRef<AsteroidsGameHandle>(null);
+  const caidaRef = useRef<CaidaGameHandle>(null);
+  const arkanoidRef = useRef<ArkanoidGameHandle>(null);
+  const snakeRef = useRef<SnakeGameHandle>(null);
 
   useEffect(() => {
     const user = getUser();
@@ -77,6 +95,27 @@ export default function GamePlayerPage({
     if (hud.status === "gameover") setOver(true);
   };
 
+  const handleCaidaHud = (hud: CaidaHudState) => {
+    setScore(hud.score);
+    setLives(hud.lives);
+    setLevel(hud.level);
+    if (hud.status === "gameover") setOver(true);
+  };
+
+  const handleArkanoidHud = (hud: ArkanoidHudState) => {
+    setScore(hud.score);
+    setLives(hud.lives);
+    setLevel(hud.level);
+    if (hud.status === "gameover") setOver(true);
+  };
+
+  const handleSnakeHud = (hud: SnakeHudState) => {
+    setScore(hud.score);
+    setLives(hud.lives);
+    setLevel(hud.level);
+    if (hud.status === "gameover") setOver(true);
+  };
+
   const restart = () => {
     setScore(0);
     setLives(3);
@@ -85,6 +124,9 @@ export default function GamePlayerPage({
     setOver(false);
     setSaved(false);
     asteroidsRef.current?.restart();
+    caidaRef.current?.restart();
+    arkanoidRef.current?.restart();
+    snakeRef.current?.restart();
   };
 
   const handleSaveScore = async () => {
@@ -119,7 +161,7 @@ export default function GamePlayerPage({
           <button className="btn yellow" onClick={() => setPaused((p) => !p)}>
             {paused ? "REANUDAR" : "PAUSA"}
           </button>
-          {!isAsteroids && (
+          {!isAsteroids && !isCaida && !isArkanoid && !isSnake && (
             <button className="btn magenta" onClick={simulateGame}>
               SIMULAR PARTIDA
             </button>
@@ -140,6 +182,24 @@ export default function GamePlayerPage({
               ref={asteroidsRef}
               paused={paused}
               onHudChange={handleAsteroidsHud}
+            />
+          ) : isCaida ? (
+            <CaidaGame
+              ref={caidaRef}
+              paused={paused}
+              onHudChange={handleCaidaHud}
+            />
+          ) : isArkanoid ? (
+            <ArkanoidGame
+              ref={arkanoidRef}
+              paused={paused}
+              onHudChange={handleArkanoidHud}
+            />
+          ) : isSnake ? (
+            <SnakeGame
+              ref={snakeRef}
+              paused={paused}
+              onHudChange={handleSnakeHud}
             />
           ) : (
             <div className="game-arena">
@@ -183,6 +243,15 @@ export default function GamePlayerPage({
           <div className="crt-keys-hint">
             ← → ROTAR · ↑ PROPULSAR · ESPACIO DISPARAR
           </div>
+        )}
+        {isCaida && (
+          <div className="crt-keys-hint">
+            ← → MOVER · ↑ ROTAR · ↓ BAJAR · ESPACIO CAÍDA RÁPIDA
+          </div>
+        )}
+        {isArkanoid && <div className="crt-keys-hint">← → MOVER PALETA</div>}
+        {isSnake && (
+          <div className="crt-keys-hint">← → ↑ ↓ MOVER LA SERPIENTE</div>
         )}
       </div>
 

@@ -22,6 +22,12 @@ import SnakeGame, {
   type SnakeGameHandle,
   type SnakeHudState,
 } from "@/components/games/SnakeGame";
+import {
+  SKIN_LABELS,
+  getStoredSkin,
+  setStoredSkin,
+  type GameSkin,
+} from "@/lib/game-skins";
 
 export default function GamePlayerPage({
   params,
@@ -44,6 +50,7 @@ export default function GamePlayerPage({
   const [over, setOver] = useState(false);
   const [name, setName] = useState("INVITADO");
   const [saved, setSaved] = useState(false);
+  const [skin, setSkin] = useState<GameSkin>("clasico");
   const asteroidsRef = useRef<AsteroidsGameHandle>(null);
   const caidaRef = useRef<CaidaGameHandle>(null);
   const arkanoidRef = useRef<ArkanoidGameHandle>(null);
@@ -52,7 +59,13 @@ export default function GamePlayerPage({
   useEffect(() => {
     const user = getUser();
     setName(user ? user.name : "INVITADO");
+    setSkin(getStoredSkin());
   }, []);
+
+  const handleSkinChange = (next: GameSkin) => {
+    setSkin(next);
+    setStoredSkin(next);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -158,6 +171,28 @@ export default function GamePlayerPage({
           </div>
         </div>
         <div className="hud-actions">
+          {(isAsteroids || isSnake || isArkanoid) && (
+            <select
+              aria-label="Skin visual"
+              value={skin}
+              onChange={(e) => handleSkinChange(e.target.value as GameSkin)}
+              style={{
+                background: "var(--bg-2)",
+                border: "1px solid var(--line)",
+                padding: "8px 10px",
+                fontFamily: "var(--mono)",
+                fontSize: 12,
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+              }}
+            >
+              {(Object.keys(SKIN_LABELS) as GameSkin[]).map((key) => (
+                <option key={key} value={key}>
+                  {SKIN_LABELS[key]}
+                </option>
+              ))}
+            </select>
+          )}
           <button className="btn yellow" onClick={() => setPaused((p) => !p)}>
             {paused ? "REANUDAR" : "PAUSA"}
           </button>
@@ -181,6 +216,7 @@ export default function GamePlayerPage({
             <AsteroidsGame
               ref={asteroidsRef}
               paused={paused}
+              skin={skin}
               onHudChange={handleAsteroidsHud}
             />
           ) : isCaida ? (
@@ -193,12 +229,14 @@ export default function GamePlayerPage({
             <ArkanoidGame
               ref={arkanoidRef}
               paused={paused}
+              skin={skin}
               onHudChange={handleArkanoidHud}
             />
           ) : isSnake ? (
             <SnakeGame
               ref={snakeRef}
               paused={paused}
+              skin={skin}
               onHudChange={handleSnakeHud}
             />
           ) : (

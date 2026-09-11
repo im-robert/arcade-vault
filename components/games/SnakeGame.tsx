@@ -7,6 +7,7 @@ import {
   useRef,
   type TouchEvent as ReactTouchEvent,
 } from "react";
+import { SNAKE_SKINS, type GameSkin } from "@/lib/game-skins";
 
 export interface SnakeHudState {
   score: number;
@@ -21,6 +22,7 @@ export interface SnakeGameHandle {
 
 interface SnakeGameProps {
   paused: boolean;
+  skin: GameSkin;
   onHudChange: (state: SnakeHudState) => void;
 }
 
@@ -76,10 +78,11 @@ const rand = (min: number, max: number) => min + Math.random() * (max - min);
 const randInt = (min: number, max: number) => Math.floor(rand(min, max + 1));
 
 const SnakeGame = forwardRef<SnakeGameHandle, SnakeGameProps>(
-  function SnakeGame({ paused, onHudChange }, ref) {
+  function SnakeGame({ paused, skin, onHudChange }, ref) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const pausedRef = useRef(paused);
     const onHudChangeRef = useRef(onHudChange);
+    const skinRef = useRef<GameSkin>(skin);
     const engineRef = useRef<Engine | null>(null);
     const initGameRef = useRef<() => void>(() => {});
     const keysRef = useRef<Record<string, boolean>>({});
@@ -91,6 +94,10 @@ const SnakeGame = forwardRef<SnakeGameHandle, SnakeGameProps>(
     useEffect(() => {
       onHudChangeRef.current = onHudChange;
     }, [onHudChange]);
+
+    useEffect(() => {
+      skinRef.current = skin;
+    }, [skin]);
 
     useEffect(() => {
       const canvas = canvasRef.current;
@@ -220,10 +227,12 @@ const SnakeGame = forwardRef<SnakeGameHandle, SnakeGameProps>(
       }
 
       function draw(engine: Engine) {
-        ctx.fillStyle = "#000";
+        const palette = SNAKE_SKINS[skinRef.current];
+
+        ctx.fillStyle = palette.background;
         ctx.fillRect(0, 0, W, H);
 
-        ctx.strokeStyle = "rgba(255,255,255,0.05)";
+        ctx.strokeStyle = palette.grid;
         for (let x = 0; x <= COLS; x++) {
           ctx.beginPath();
           ctx.moveTo(x * CELL, 0);
@@ -247,22 +256,37 @@ const SnakeGame = forwardRef<SnakeGameHandle, SnakeGameProps>(
         );
 
         engine.snake.forEach((seg, i) => {
-          ctx.fillStyle = i === 0 ? "#39ff6a" : "#1fae42";
+          ctx.save();
+          const isHead = i === 0;
+          ctx.shadowColor = isHead
+            ? palette.snakeHeadGlow
+            : palette.snakeBodyGlow;
+          ctx.shadowBlur =
+            (isHead ? palette.snakeHeadGlow : palette.snakeBodyGlow) ===
+            "transparent"
+              ? 0
+              : 6;
+          ctx.fillStyle = isHead ? palette.snakeHead : palette.snakeBody;
           ctx.fillRect(seg.x * CELL + 1, seg.y * CELL + 1, CELL - 2, CELL - 2);
+          ctx.restore();
         });
 
-        ctx.fillStyle = "#fff";
+        ctx.save();
+        ctx.shadowColor = palette.hudGlow;
+        ctx.shadowBlur = palette.hudGlow === "transparent" ? 0 : 6;
+        ctx.fillStyle = palette.hud;
         ctx.font = "bold 18px monospace";
         ctx.textAlign = "left";
         ctx.textBaseline = "top";
         ctx.fillText("Score: " + engine.score, 10, 10);
         ctx.textAlign = "center";
         ctx.fillText("Nivel: " + engine.level, W / 2, 10);
+        ctx.restore();
 
         if (engine.state === "gameover") {
-          ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+          ctx.fillStyle = palette.overlay;
           ctx.fillRect(0, 0, W, H);
-          ctx.fillStyle = "#fff";
+          ctx.fillStyle = palette.overlayText;
           ctx.font = "bold 48px monospace";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";

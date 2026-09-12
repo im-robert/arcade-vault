@@ -47,7 +47,7 @@ Always use the `/frontend-design` skill to design the UI. All visual language li
 - `auth/page.tsx` — sign in/up (still local-only: writes `av_user` to `localStorage`, no Supabase Auth).
 - `acerca-de/page.tsx` + `api/contact/route.ts` — about page and contact form, sent with Resend.
 - `middleware.ts` → `lib/supabase/middleware.ts` — Supabase session refresh on every non-static request.
-See `references\gamnes-catalog.md` when you need to check the games that are implemented and how implement the new ones.
+  See `references/games-catalog.md` when you need to check the games that are implemented and how implement the new ones.
 
 ### Data layer (`lib/`)
 
@@ -77,7 +77,16 @@ Env vars (see `.env.example`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE
 - `references/templates/` — the original standalone HTML/JSX prototype (hash router + `localStorage`). Still useful as design/behaviour reference, **not** wired into the app. `styles.css` there is the ancestor of `app/globals.css`.
 - `references/started-games/` — source games to port (`02-asteroids`, `03-tetris`, `04-arkanoid`).
 - `references/snake-assets/` — sprite sources; shipped assets live in `public/games/` (`arkanoid-spritesheet.png`, `snake-fruits.png`, `sounds/`).
+- `references/games-catalog.md` — hand-maintained mirror of the Supabase `games` table.
+- `references/game-suggestions.md` — persistent memory of the `game-planner` agent: every game suggested, its verdict and why. Read it before proposing a new game; never delete entries.
 - `demos/demo.tsx` — scratch demo, not part of the app.
+
+## Agents
+
+Project agents in `.claude/agents/`:
+
+- `game-planner` — decides **which** game should come next. Diagnoses the catalog (category/color balance, missing mechanics, pending `.game-arena` placeholders), picks one winner with reasoning, writes a full `specs/NN-*.md`, and records the decision in `references/game-suggestions.md` so ideas are never re-proposed. It never writes engine code, components or migrations — hand that to `/spec-impl` or `/add-game`.
+- `mobile-porter` — audits and implements the touch ergonomics of the player route (`app/juego/[id]/jugar`) for the 4 real-engine games, following `specs/08-controles-tactiles-movil.md`: minimum 44×44px touch targets, portrait/landscape support, and the "FIN DEL JUEGO" modal vs. the virtual keyboard. Only touches `app/globals.css` and the player page; never redesigns button layout or touches placeholder games.
 
 ## Skills
 

@@ -7,6 +7,7 @@ import {
   useRef,
   type TouchEvent as ReactTouchEvent,
 } from "react";
+import { ARKANOID_SKINS, type GameSkin } from "@/lib/game-skins";
 
 export interface ArkanoidHudState {
   score: number;
@@ -21,6 +22,7 @@ export interface ArkanoidGameHandle {
 
 interface ArkanoidGameProps {
   paused: boolean;
+  skin: GameSkin;
   onHudChange: (state: ArkanoidHudState) => void;
 }
 
@@ -233,10 +235,11 @@ interface Engine {
 }
 
 const ArkanoidGame = forwardRef<ArkanoidGameHandle, ArkanoidGameProps>(
-  function ArkanoidGame({ paused, onHudChange }, ref) {
+  function ArkanoidGame({ paused, skin, onHudChange }, ref) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const pausedRef = useRef(paused);
     const onHudChangeRef = useRef(onHudChange);
+    const skinRef = useRef(skin);
     const engineRef = useRef<Engine | null>(null);
     const initGameRef = useRef<() => void>(() => {});
     const keysRef = useRef<Record<string, boolean>>({});
@@ -248,6 +251,10 @@ const ArkanoidGame = forwardRef<ArkanoidGameHandle, ArkanoidGameProps>(
     useEffect(() => {
       onHudChangeRef.current = onHudChange;
     }, [onHudChange]);
+
+    useEffect(() => {
+      skinRef.current = skin;
+    }, [skin]);
 
     useEffect(() => {
       const canvas = canvasRef.current;
@@ -279,6 +286,101 @@ const ArkanoidGame = forwardRef<ArkanoidGameHandle, ArkanoidGameProps>(
       ) {
         if (!spriteLoaded) return;
         ctx.drawImage(spriteImg, sp.sx, sp.sy, sp.sw, sp.sh, x, y, w, h);
+      }
+
+      function shadeColor(hex: string, percent: number): string {
+        if (!hex.startsWith("#") || (hex.length !== 7 && hex.length !== 4))
+          return hex;
+        const full =
+          hex.length === 4
+            ? `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`
+            : hex;
+        const num = parseInt(full.slice(1), 16);
+        const clamp = (v: number) => Math.max(0, Math.min(255, v));
+        const r = clamp(Math.round((num >> 16) + 255 * percent));
+        const g = clamp(Math.round(((num >> 8) & 0x00ff) + 255 * percent));
+        const b = clamp(Math.round((num & 0x0000ff) + 255 * percent));
+        return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
+      }
+
+      function roundRectPath(
+        x: number,
+        y: number,
+        w: number,
+        h: number,
+        r: number,
+      ) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.arcTo(x + w, y, x + w, y + r, r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+        ctx.lineTo(x + r, y + h);
+        ctx.arcTo(x, y + h, x, y + h - r, r);
+        ctx.lineTo(x, y + r);
+        ctx.arcTo(x, y, x + r, y, r);
+        ctx.closePath();
+      }
+
+      function drawFlatBlock(
+        x: number,
+        y: number,
+        w: number,
+        h: number,
+        color: string,
+        alpha = 1,
+      ) {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, w, h);
+        const edge = 3;
+        ctx.fillStyle = shadeColor(color, 0.22);
+        ctx.fillRect(x, y, w, edge);
+        ctx.fillRect(x, y, edge, h);
+        ctx.fillStyle = shadeColor(color, -0.28);
+        ctx.fillRect(x, y + h - edge, w, edge);
+        ctx.fillRect(x + w - edge, y, edge, h);
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.55)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+        ctx.restore();
+      }
+
+      function drawPaddleShape(
+        x: number,
+        y: number,
+        w: number,
+        h: number,
+        color: string,
+        glow: string,
+      ) {
+        ctx.save();
+        if (glow !== "transparent") {
+          ctx.shadowColor = glow;
+          ctx.shadowBlur = 14;
+        }
+        roundRectPath(x, y, w, h, 5);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+        ctx.fillRect(x + 3, y + 2, w - 6, 2);
+        ctx.strokeStyle = shadeColor(color, -0.35);
+        ctx.lineWidth = 1;
+        roundRectPath(x + 0.5, y + 0.5, w - 1, h - 1, 5);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawScanlines() {
+        ctx.save();
+        ctx.fillStyle = "rgba(0, 0, 0, 0.18)";
+        for (let y = 0; y < H; y += 4) {
+          ctx.fillRect(0, y, W, 2);
+        }
+        ctx.restore();
       }
 
       function onKeyDown(e: KeyboardEvent) {
@@ -444,12 +546,54 @@ const ArkanoidGame = forwardRef<ArkanoidGameHandle, ArkanoidGameProps>(
         ctx.fillText(message, W / 2, H / 2);
       }
 
+      function drawBall(
+        palette: (typeof ARKANOID_SKINS)[GameSkin],
+        x: number,
+        y: number,
+        w: number,
+        h: number,
+      ) {
+        if (palette.useSprites) {
+          drawSprite(SPRITES.ball, x, y, w, h);
+          return;
+        }
+        ctx.save();
+        if (palette.ballGlow !== "transparent") {
+          ctx.shadowColor = palette.ballGlow;
+          ctx.shadowBlur = 12;
+        }
+        const cx = x + w / 2;
+        const cy = y + h / 2;
+        const gradient = ctx.createRadialGradient(
+          cx - w * 0.2,
+          cy - h * 0.2,
+          w * 0.1,
+          cx,
+          cy,
+          w / 2,
+        );
+        gradient.addColorStop(0, shadeColor(palette.ball, 0.4));
+        gradient.addColorStop(1, shadeColor(palette.ball, -0.1));
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
       function draw(engine: Engine) {
-        ctx.fillStyle = "#000";
+        const palette = ARKANOID_SKINS[skinRef.current];
+
+        ctx.fillStyle = palette.background;
         ctx.fillRect(0, 0, W, H);
 
+        if (!palette.useSprites && skinRef.current === "retro") {
+          drawScanlines();
+        }
+
         for (const block of engine.blocks) {
-          if (block.alive)
+          if (!block.alive) continue;
+          if (palette.useSprites) {
             drawSprite(
               SPRITES.blocks[block.color],
               block.x,
@@ -457,49 +601,87 @@ const ArkanoidGame = forwardRef<ArkanoidGameHandle, ArkanoidGameProps>(
               block.w,
               block.h,
             );
+          } else {
+            drawFlatBlock(
+              block.x,
+              block.y,
+              block.w,
+              block.h,
+              palette.blocks[block.color],
+            );
+          }
         }
 
         for (const exp of engine.explosions) {
-          const frameIndex = Math.min(
-            Math.floor((exp.elapsed / EXPLOSION_DURATION) * 4),
-            3,
-          );
-          drawSprite(
-            EXPLOSION_FRAMES[exp.color][frameIndex],
-            exp.x,
-            exp.y,
-            exp.w,
-            exp.h,
-          );
+          if (palette.useSprites) {
+            const frameIndex = Math.min(
+              Math.floor((exp.elapsed / EXPLOSION_DURATION) * 4),
+              3,
+            );
+            drawSprite(
+              EXPLOSION_FRAMES[exp.color][frameIndex],
+              exp.x,
+              exp.y,
+              exp.w,
+              exp.h,
+            );
+          } else {
+            const alpha = Math.max(0, 1 - exp.elapsed / EXPLOSION_DURATION);
+            drawFlatBlock(
+              exp.x,
+              exp.y,
+              exp.w,
+              exp.h,
+              palette.blocks[exp.color],
+              alpha,
+            );
+          }
         }
 
-        drawSprite(
-          SPRITES.paddle,
-          engine.paddle.x,
-          engine.paddle.y,
-          engine.paddle.w,
-          engine.paddle.h,
-        );
-        drawSprite(
-          SPRITES.ball,
+        if (palette.useSprites) {
+          drawSprite(
+            SPRITES.paddle,
+            engine.paddle.x,
+            engine.paddle.y,
+            engine.paddle.w,
+            engine.paddle.h,
+          );
+        } else {
+          drawPaddleShape(
+            engine.paddle.x,
+            engine.paddle.y,
+            engine.paddle.w,
+            engine.paddle.h,
+            palette.paddle,
+            palette.paddleGlow,
+          );
+        }
+        drawBall(
+          palette,
           engine.ball.x,
           engine.ball.y,
           engine.ball.w,
           engine.ball.h,
         );
 
-        ctx.fillStyle = "#fff";
+        ctx.save();
+        if (palette.textGlow !== "transparent") {
+          ctx.shadowColor = palette.textGlow;
+          ctx.shadowBlur = 8;
+        }
+        ctx.fillStyle = palette.text;
         ctx.font = "bold 18px monospace";
         ctx.textAlign = "left";
         ctx.textBaseline = "top";
         ctx.fillText("Score: " + engine.score, 10, 10);
         ctx.textAlign = "center";
         ctx.fillText("Nivel: " + engine.level, W / 2, 10);
+        ctx.restore();
         const ballSize = 16;
         const ballSpacing = 4;
         for (let i = 0; i < engine.lives; i++) {
           const bx = W - 10 - (engine.lives - i) * (ballSize + ballSpacing);
-          drawSprite(SPRITES.ball, bx, 10, ballSize, ballSize);
+          drawBall(palette, bx, 10, ballSize, ballSize);
         }
 
         if (engine.state === "gameover") drawOverlay("GAME OVER");
@@ -585,22 +767,33 @@ const ArkanoidGame = forwardRef<ArkanoidGameHandle, ArkanoidGameProps>(
           style={{ width: "100%", height: "100%", display: "block" }}
         />
         <div className="touch-controls">
-          <button
-            type="button"
-            className="touch-btn"
-            aria-label="Mover paleta a la izquierda"
-            {...touchHandlers("ArrowLeft")}
-          >
-            ◀
-          </button>
-          <button
-            type="button"
-            className="touch-btn"
-            aria-label="Mover paleta a la derecha"
-            {...touchHandlers("ArrowRight")}
-          >
-            ▶
-          </button>
+          <div className="touch-controls-panel">
+            <div className="touch-dpad" aria-label="Mover paleta">
+              <button
+                type="button"
+                className="touch-dpad-btn touch-dpad-left"
+                aria-label="Mover paleta a la izquierda"
+                {...touchHandlers("ArrowLeft")}
+              >
+                <svg className="touch-dpad-arrow" viewBox="0 0 24 24">
+                  <path d="M16 4 L16 20 L4 12 Z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="touch-dpad-btn touch-dpad-right"
+                aria-label="Mover paleta a la derecha"
+                {...touchHandlers("ArrowRight")}
+              >
+                <svg className="touch-dpad-arrow" viewBox="0 0 24 24">
+                  <path d="M8 4 L20 12 L8 20 Z" />
+                </svg>
+              </button>
+              <div className="touch-dpad-hub" aria-hidden="true">
+                <span className="touch-dpad-hub-gem"></span>
+              </div>
+            </div>
+          </div>
         </div>
       </>
     );

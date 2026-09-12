@@ -288,9 +288,15 @@ const ArkanoidGame = forwardRef<ArkanoidGameHandle, ArkanoidGameProps>(
         ctx.drawImage(spriteImg, sp.sx, sp.sy, sp.sw, sp.sh, x, y, w, h);
       }
 
+      const shadeCache = new Map<string, string>();
       function shadeColor(hex: string, percent: number): string {
-        if (!hex.startsWith("#") || (hex.length !== 7 && hex.length !== 4))
+        const cacheKey = hex + "|" + percent;
+        const cached = shadeCache.get(cacheKey);
+        if (cached !== undefined) return cached;
+        if (!hex.startsWith("#") || (hex.length !== 7 && hex.length !== 4)) {
+          shadeCache.set(cacheKey, hex);
           return hex;
+        }
         const full =
           hex.length === 4
             ? `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`
@@ -300,7 +306,9 @@ const ArkanoidGame = forwardRef<ArkanoidGameHandle, ArkanoidGameProps>(
         const r = clamp(Math.round((num >> 16) + 255 * percent));
         const g = clamp(Math.round(((num >> 8) & 0x00ff) + 255 * percent));
         const b = clamp(Math.round((num & 0x0000ff) + 255 * percent));
-        return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
+        const result = `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
+        shadeCache.set(cacheKey, result);
+        return result;
       }
 
       function roundRectPath(
@@ -331,7 +339,6 @@ const ArkanoidGame = forwardRef<ArkanoidGameHandle, ArkanoidGameProps>(
         color: string,
         alpha = 1,
       ) {
-        ctx.save();
         ctx.globalAlpha = alpha;
         ctx.fillStyle = color;
         ctx.fillRect(x, y, w, h);
@@ -345,7 +352,7 @@ const ArkanoidGame = forwardRef<ArkanoidGameHandle, ArkanoidGameProps>(
         ctx.strokeStyle = "rgba(0, 0, 0, 0.55)";
         ctx.lineWidth = 1;
         ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-        ctx.restore();
+        ctx.globalAlpha = 1;
       }
 
       function drawPaddleShape(
@@ -516,10 +523,15 @@ const ArkanoidGame = forwardRef<ArkanoidGameHandle, ArkanoidGameProps>(
           }
         }
 
-        for (const exp of engine.explosions) exp.elapsed += dt * 1000;
-        engine.explosions = engine.explosions.filter(
-          (exp) => exp.elapsed < EXPLOSION_DURATION,
-        );
+        if (engine.explosions.length > 0) {
+          for (let i = engine.explosions.length - 1; i >= 0; i--) {
+            const exp = engine.explosions[i];
+            exp.elapsed += dt * 1000;
+            if (exp.elapsed >= EXPLOSION_DURATION) {
+              engine.explosions.splice(i, 1);
+            }
+          }
+        }
 
         if (ball.y > H) {
           engine.lives--;
@@ -690,6 +702,7 @@ const ArkanoidGame = forwardRef<ArkanoidGameHandle, ArkanoidGameProps>(
 
       let rafId = 0;
       let lastTime: number | null = null;
+      let lastHud: ArkanoidHudState | null = null;
 
       function loop(ts: number) {
         const engine = engineRef.current;
@@ -706,12 +719,21 @@ const ArkanoidGame = forwardRef<ArkanoidGameHandle, ArkanoidGameProps>(
               engine.state === "gameover" || engine.state === "win"
                 ? "gameover"
                 : "playing";
-            onHudChangeRef.current({
-              score: engine.score,
-              lives: engine.lives,
-              level: engine.level,
-              status,
-            });
+            if (
+              !lastHud ||
+              lastHud.score !== engine.score ||
+              lastHud.lives !== engine.lives ||
+              lastHud.level !== engine.level ||
+              lastHud.status !== status
+            ) {
+              lastHud = {
+                score: engine.score,
+                lives: engine.lives,
+                level: engine.level,
+                status,
+              };
+              onHudChangeRef.current(lastHud);
+            }
           }
         }
         rafId = requestAnimationFrame(loop);

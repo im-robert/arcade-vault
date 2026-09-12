@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Arcade Vault ("Es una plataforma para jugar online y competir por la mayor cantidad de puntos") — a retro/neon arcade portal built with Next.js 16 (App Router), React 19, TypeScript, and Tailwind CSS v4, with Supabase as the backend for the game catalog and leaderboards.
 
-The prototype has been migrated: `app/` now holds the real routes, the catalog and scores live in Supabase, and four games (Asteroids, Caída/Tetris, Bloque Buster/Arkanoid, Serpentina/Snake) run on real canvas engines. The rest of the catalog still renders the decorative `.game-arena` placeholder with a "SIMULAR PARTIDA" button.
+The prototype has been migrated: `app/` now holds the real routes, the catalog and scores live in Supabase, and five games (Asteroids, Caída/Tetris, Bloque Buster/Arkanoid, Serpentina/Snake, Frogger) run on real canvas engines, each with a selectable neón/retro/clásico skin (`lib/game-skins.ts`). The rest of the catalog (`invasores`, `gloton`, `duelo-pixel`) still renders the decorative `.game-arena` placeholder with a "SIMULAR PARTIDA" button.
 
 The specs written so far live in `specs/` and are the canonical record of every decision:
 
@@ -18,6 +18,9 @@ The specs written so far live in `specs/` and are the canonical record of every 
 - `04-configuracion-cliente-supabase.md` — Supabase client (browser/server/middleware).
 - `05-integrar-juego-asteroides-rocas.md` — the canonical "real engine" pattern (Asteroids).
 - `06-leaderboard-catalogo-supabase.md` — catalog + scores moved to Supabase.
+- `07-integrar-juego-invasores.md` — real engine for `invasores` (Borrador/draft, not yet implemented).
+- `08-controles-tactiles-movil.md` — touch ergonomics pass for the player route (Aprobado).
+- `game-jam/` — output of the `game-jam` agent: per-topic subfolders with paired design + implementation specs (e.g. `game-jam/frogger/frogger-core.md`, the spec behind the Frogger engine).
 
 Read the relevant spec before touching an area it covers.
 
@@ -33,7 +36,9 @@ A `PostToolUse` hook (`.claude/hooks/format-and-lint.cjs`) runs Prettier + ESLin
 
 ## Styles
 
-Always use the `/frontend-design` skill to design the UI. All visual language lives in `app/globals.css` (~2.8k lines of the neon/retro system: CSS custom properties, `.cover-*` game covers, `.crt-screen`, `.player-hud`, `.game-arena`, `.touch-controls`). Reuse existing classes before adding new ones.
+Always use the `/frontend-design` skill to design the UI. All visual language lives in `app/globals.css` (~3.1k lines of the neon/retro system: CSS custom properties, `.cover-*` game covers, `.crt-screen`, `.player-hud`, `.game-arena`, `.touch-controls`). Reuse existing classes before adding new ones.
+
+Per-engine color skins (neón/retro/clásico) are a separate layer on top of this: palettes live in `lib/game-skins.ts` (one `Record<GameSkin, ...Palette>` per engine), selected client-side and persisted via `getStoredSkin`/`setStoredSkin` (`localStorage` key `av_skin`). Add a new engine's palette there, not in `globals.css`.
 
 ## Architecture
 
@@ -42,7 +47,7 @@ Always use the `/frontend-design` skill to design the UI. All visual language li
 - `page.tsx` — home (server component; loads games, recent scores and top players, renders `HomeContent`).
 - `games/page.tsx` — catalog/browser (`GamesBrowser`, category filters).
 - `juego/[id]/page.tsx` — game detail: description, "Mejor global"/"Partidas", per-game leaderboard.
-- `juego/[id]/jugar/page.tsx` — player: HUD (score/lives/level), pause/resume, "FIN DEL JUEGO" modal and score submission. Holds the per-game engine branches (`isAsteroids`, `isCaida`, `isArkanoid`, `isSnake`) with `.game-arena` as fallback.
+- `juego/[id]/jugar/page.tsx` — player: HUD (score/lives/level), pause/resume, "FIN DEL JUEGO" modal and score submission. Holds the per-game engine branches (`isAsteroids`, `isCaida`, `isArkanoid`, `isSnake`, `isFrogger`) with `.game-arena` as fallback.
 - `salon-de-la-fama/page.tsx` — hall of fame, tabbed by game.
 - `auth/page.tsx` — sign in/up (still local-only: writes `av_user` to `localStorage`, no Supabase Auth).
 - `acerca-de/page.tsx` + `api/contact/route.ts` — about page and contact form, sent with Resend.
@@ -55,11 +60,12 @@ Always use the `/frontend-design` skill to design the UI. All visual language li
 - `games.ts` — reads the `games` table; `best` and `plays` are **always computed** from `scores`, never stored as columns.
 - `scores.ts` — leaderboards: `getTopScores`, `getLeaderboardByGame`, `getRecentScores`, `getTopPlayers`.
 - `session.ts` — `av_user` in `localStorage` + `saveScore()` inserting into Supabase `scores`.
+- `game-skins.ts` — `GameSkin` (`neon | retro | clasico`) and one palette per real engine (`ASTEROIDS_SKINS`, `SNAKE_SKINS`, `ARKANOID_SKINS`, `FROGGER_SKINS`); `getStoredSkin`/`setStoredSkin` persist the choice in `localStorage`.
 - `supabase/{client,server,middleware}.ts` — `@supabase/ssr` clients (browser / server component / middleware).
 
 ### Components (`components/`)
 
-`Nav`, `HomeContent`, `GamesBrowser`, `GameCard`, `HallOfFameBoard`, and `games/{AsteroidsGame,CaidaGame,ArkanoidGame,SnakeGame}.tsx`.
+`Nav`, `HomeContent`, `GamesBrowser`, `GameCard`, `HallOfFameBoard`, and `games/{AsteroidsGame,CaidaGame,ArkanoidGame,SnakeGame,FroggerGame}.tsx`.
 
 Every engine is a `"use client"` component following the same contract established by SPEC 05: all state in `useRef`s, one `useEffect` for the RAF loop + listeners with full cleanup, a `paused` prop, an `onHudChange(state)` callback (`score`/`lives`/`level`/`status`), and a `restart()` exposed via `useImperativeHandle`. The engine never shows its own game-over screen or saves scores — it reports upward and the player page handles the modal and `saveScore`.
 
@@ -69,6 +75,7 @@ Project ref `swmezsmuwlavtbdtsstl`, reachable through the `supabase` MCP server 
 
 - `20260816191454_games_and_scores.sql` — `games` + `scores` tables, RLS with public read and public insert on `scores`, seeded catalog.
 - `20260816232257_remove_seed_scores.sql` — removed the fake historical scores on purpose; new leaderboards start empty.
+- `20260912141638_update_ranaria_to_frogger.sql` — repurposed the existing `ranaria` catalog row into the real Frogger engine (title/short/long/cover/color updated in place; `id` stays `ranaria`, matched by `isFrogger` in the player page).
 
 Env vars (see `.env.example`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `RESEND_API_KEY`, `CONTACT_TO_EMAIL`, `CONTACT_FROM_EMAIL`.
 
@@ -77,6 +84,7 @@ Env vars (see `.env.example`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE
 - `references/templates/` — the original standalone HTML/JSX prototype (hash router + `localStorage`). Still useful as design/behaviour reference, **not** wired into the app. `styles.css` there is the ancestor of `app/globals.css`.
 - `references/started-games/` — source games to port (`02-asteroids`, `03-tetris`, `04-arkanoid`).
 - `references/snake-assets/` — sprite sources; shipped assets live in `public/games/` (`arkanoid-spritesheet.png`, `snake-fruits.png`, `sounds/`).
+- `references/gamepad-assets/` — standalone neon gamepad component (`gamepad.html`) used as a design reference for touch/keyboard controls; not wired into the app.
 - `references/games-catalog.md` — hand-maintained mirror of the Supabase `games` table.
 - `references/game-suggestions.md` — persistent memory of the `game-planner` agent: every game suggested, its verdict and why. Read it before proposing a new game; never delete entries.
 - `demos/demo.tsx` — scratch demo, not part of the app.
@@ -85,14 +93,20 @@ Env vars (see `.env.example`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE
 
 Project agents in `.claude/agents/`:
 
-- `game-planner` — decides **which** game should come next. Diagnoses the catalog (category/color balance, missing mechanics, pending `.game-arena` placeholders), picks one winner with reasoning, writes a full `specs/NN-*.md`, and records the decision in `references/game-suggestions.md` so ideas are never re-proposed. It never writes engine code, components or migrations — hand that to `/spec-impl` or `/add-game`.
-- `mobile-porter` — audits and implements the touch ergonomics of the player route (`app/juego/[id]/jugar`) for the 4 real-engine games, following `specs/08-controles-tactiles-movil.md`: minimum 44×44px touch targets, portrait/landscape support, and the "FIN DEL JUEGO" modal vs. the virtual keyboard. Only touches `app/globals.css` and the player page; never redesigns button layout or touches placeholder games.
+- `game-planner` — decides which game should come next; diagnoses the catalog and writes the `specs/NN-*.md` for it.
+- `game-jam` — runs a 2-way internal game jam on a topic (given or self-chosen), autonomously picking a winner between two proposed specs.
+- `mobile-porter` — audits/fixes touch ergonomics of the player route for the real-engine games (SPEC 08).
+- `skin-designer` — verifies/implements the neón/retro/clásico skins of a single named game.
+- `game-performance-booster` — audits/fixes render/compute performance of a single named real-engine game, never its game logic.
+
+None of these write engine code or migrations outside their stated scope — hand catalog/engine implementation to `/spec-impl` or `/add-game`.
 
 ## Skills
 
 Project skills in `.claude/skills/` (all `disable-model-invocation`, invoke explicitly):
 
 - `/spec` and `/spec-impl` — Spec Driven Design workflow, from https://github.com/Klerith/fernando-skills (`npx skills@latest add Klerith/fernando-skills`). Use `/spec` before any large feature, `/spec-impl` to implement it.
+- `/spec-impl-game <NN-spec-name>` — same as `/spec-impl`, but for a new-game spec: after implementation it automatically runs `skin-designer` then `mobile-porter`, in sequence.
 - `/add-game <folder-or-name>` — adds a new playable game end to end: catalog row migration, engine component, wiring into the player route, leaderboard. Use it for any new game or when replacing a `.game-arena` placeholder with a real engine; it encodes the SPEC 05/06 conventions in full.
 
 ## Hard rules

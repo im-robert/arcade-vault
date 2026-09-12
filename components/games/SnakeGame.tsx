@@ -115,6 +115,38 @@ const SnakeGame = forwardRef<SnakeGameHandle, SnakeGameProps>(
       };
       spriteImg.src = "/games/snake-fruits.png";
 
+      // Fondo + grilla cacheados en un canvas fuera de pantalla: son
+      // estáticos salvo cuando cambia el skin, así que evitamos redibujar
+      // ~70 líneas por frame.
+      const bgCanvas = document.createElement("canvas");
+      bgCanvas.width = W;
+      bgCanvas.height = H;
+      const bgCtx = bgCanvas.getContext("2d");
+      let cachedSkin: GameSkin | null = null;
+
+      function ensureBackgroundCache(skin: GameSkin) {
+        if (!bgCtx || cachedSkin === skin) return;
+        const palette = SNAKE_SKINS[skin];
+        bgCtx.fillStyle = palette.background;
+        bgCtx.fillRect(0, 0, W, H);
+        bgCtx.strokeStyle = palette.grid;
+        for (let x = 0; x <= COLS; x++) {
+          bgCtx.beginPath();
+          bgCtx.moveTo(x * CELL, 0);
+          bgCtx.lineTo(x * CELL, H);
+          bgCtx.stroke();
+        }
+        for (let y = 0; y <= ROWS; y++) {
+          bgCtx.beginPath();
+          bgCtx.moveTo(0, y * CELL);
+          bgCtx.lineTo(W, y * CELL);
+          bgCtx.stroke();
+        }
+        cachedSkin = skin;
+      }
+
+      let lastHud: SnakeHudState | null = null;
+
       function onKeyDown(e: KeyboardEvent) {
         keys[e.key] = true;
         const engine = engineRef.current;
@@ -162,14 +194,30 @@ const SnakeGame = forwardRef<SnakeGameHandle, SnakeGameProps>(
           fruitsEaten: 0,
         };
         engineRef.current = engine;
-        onHudChangeRef.current({
+        const initialHud: SnakeHudState = {
           score: engine.score,
           lives: 1,
           level: engine.level,
           status: "playing",
-        });
+        };
+        lastHud = initialHud;
+        onHudChangeRef.current(initialHud);
       }
       initGameRef.current = initGame;
+
+      function emitHud(hud: SnakeHudState) {
+        if (
+          lastHud &&
+          lastHud.score === hud.score &&
+          lastHud.lives === hud.lives &&
+          lastHud.level === hud.level &&
+          lastHud.status === hud.status
+        ) {
+          return;
+        }
+        lastHud = hud;
+        onHudChangeRef.current(hud);
+      }
 
       function step(engine: Engine) {
         engine.dir = engine.nextDir;
@@ -229,21 +277,12 @@ const SnakeGame = forwardRef<SnakeGameHandle, SnakeGameProps>(
       function draw(engine: Engine) {
         const palette = SNAKE_SKINS[skinRef.current];
 
-        ctx.fillStyle = palette.background;
-        ctx.fillRect(0, 0, W, H);
-
-        ctx.strokeStyle = palette.grid;
-        for (let x = 0; x <= COLS; x++) {
-          ctx.beginPath();
-          ctx.moveTo(x * CELL, 0);
-          ctx.lineTo(x * CELL, H);
-          ctx.stroke();
-        }
-        for (let y = 0; y <= ROWS; y++) {
-          ctx.beginPath();
-          ctx.moveTo(0, y * CELL);
-          ctx.lineTo(W, y * CELL);
-          ctx.stroke();
+        ensureBackgroundCache(skinRef.current);
+        if (bgCtx) {
+          ctx.drawImage(bgCanvas, 0, 0);
+        } else {
+          ctx.fillStyle = palette.background;
+          ctx.fillRect(0, 0, W, H);
         }
 
         const foodSize = CELL * 1.6;
@@ -255,21 +294,31 @@ const SnakeGame = forwardRef<SnakeGameHandle, SnakeGameProps>(
           foodSize,
         );
 
-        engine.snake.forEach((seg, i) => {
-          ctx.save();
-          const isHead = i === 0;
-          ctx.shadowColor = isHead
-            ? palette.snakeHeadGlow
-            : palette.snakeBodyGlow;
-          ctx.shadowBlur =
-            (isHead ? palette.snakeHeadGlow : palette.snakeBodyGlow) ===
-            "transparent"
-              ? 0
-              : 6;
-          ctx.fillStyle = isHead ? palette.snakeHead : palette.snakeBody;
-          ctx.fillRect(seg.x * CELL + 1, seg.y * CELL + 1, CELL - 2, CELL - 2);
-          ctx.restore();
-        });
+        // Se agrupa el dibujo por tipo (cuerpo/cabeza) para configurar
+        // shadowColor/shadowBlur una sola vez por frame en vez de una vez
+        // por segmento (el costo de shadowBlur crece con el largo de la
+        // serpiente si se re-declara por celda).
+        ctx.save();
+        if (engine.snake.length > 1) {
+          ctx.shadowColor = palette.snakeBodyGlow;
+          ctx.shadowBlur = palette.snakeBodyGlow === "transparent" ? 0 : 6;
+          ctx.fillStyle = palette.snakeBody;
+          for (let i = 1; i < engine.snake.length; i++) {
+            const seg = engine.snake[i];
+            ctx.fillRect(
+              seg.x * CELL + 1,
+              seg.y * CELL + 1,
+              CELL - 2,
+              CELL - 2,
+            );
+          }
+        }
+        const head = engine.snake[0];
+        ctx.shadowColor = palette.snakeHeadGlow;
+        ctx.shadowBlur = palette.snakeHeadGlow === "transparent" ? 0 : 6;
+        ctx.fillStyle = palette.snakeHead;
+        ctx.fillRect(head.x * CELL + 1, head.y * CELL + 1, CELL - 2, CELL - 2);
+        ctx.restore();
 
         ctx.save();
         ctx.shadowColor = palette.hudGlow;
@@ -308,7 +357,7 @@ const SnakeGame = forwardRef<SnakeGameHandle, SnakeGameProps>(
             lastTime = ts;
             update(engine, dt);
             draw(engine);
-            onHudChangeRef.current({
+            emitHud({
               score: engine.score,
               lives: engine.state === "gameover" ? 0 : 1,
               level: engine.level,

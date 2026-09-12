@@ -55,6 +55,7 @@ export default function GamePlayerPage({
   const caidaRef = useRef<CaidaGameHandle>(null);
   const arkanoidRef = useRef<ArkanoidGameHandle>(null);
   const snakeRef = useRef<SnakeGameHandle>(null);
+  const initialsInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const user = getUser();
@@ -302,9 +303,16 @@ export default function GamePlayerPage({
             {!saved ? (
               <div className="input-row">
                 <input
+                  ref={initialsInputRef}
                   value={name}
                   onChange={(e) =>
                     setName(e.target.value.toUpperCase().slice(0, 10))
+                  }
+                  onFocus={() =>
+                    initialsInputRef.current?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "center",
+                    })
                   }
                   placeholder="TUS INICIALES"
                 />

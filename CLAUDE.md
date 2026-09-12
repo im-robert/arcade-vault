@@ -86,6 +86,7 @@ Env vars (see `.env.example`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE
 Project agents in `.claude/agents/`:
 
 - `game-planner` — decides **which** game should come next. Diagnoses the catalog (category/color balance, missing mechanics, pending `.game-arena` placeholders), picks one winner with reasoning, writes a full `specs/NN-*.md`, and records the decision in `references/game-suggestions.md` so ideas are never re-proposed. It never writes engine code, components or migrations — hand that to `/spec-impl` or `/add-game`.
+- `mobile-porter` — audits and implements the touch ergonomics of the player route (`app/juego/[id]/jugar`) for the 4 real-engine games, following `specs/08-controles-tactiles-movil.md`: minimum 44×44px touch targets, portrait/landscape support, and the "FIN DEL JUEGO" modal vs. the virtual keyboard. Only touches `app/globals.css` and the player page; never redesigns button layout or touches placeholder games.
 
 ## Skills
 

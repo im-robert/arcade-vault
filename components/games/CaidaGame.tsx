@@ -557,46 +557,64 @@ const CaidaGame = forwardRef<CaidaGameHandle, CaidaGameProps>(
           style={{ width: "100%", height: "100%", display: "block" }}
         />
         <div className="touch-controls">
-          <button
-            type="button"
-            className="touch-btn"
-            aria-label="Mover a la izquierda"
-            onTouchStart={touchAction(() => actionsRef.current?.moveLeft())}
-          >
-            ◀
-          </button>
-          <button
-            type="button"
-            className="touch-btn"
-            aria-label="Mover a la derecha"
-            onTouchStart={touchAction(() => actionsRef.current?.moveRight())}
-          >
-            ▶
-          </button>
-          <button
-            type="button"
-            className="touch-btn"
-            aria-label="Rotar"
-            onTouchStart={touchAction(() => actionsRef.current?.rotate())}
-          >
-            ↻
-          </button>
-          <button
-            type="button"
-            className="touch-btn"
-            aria-label="Bajar"
-            onTouchStart={touchAction(() => actionsRef.current?.softDrop())}
-          >
-            ▼
-          </button>
-          <button
-            type="button"
-            className="touch-btn fire"
-            aria-label="Caída rápida"
-            onTouchStart={touchAction(() => actionsRef.current?.hardDrop())}
-          >
-            CAÍDA
-          </button>
+          <div className="touch-controls-panel">
+            <div className="touch-dpad" aria-label="Mover pieza">
+              <button
+                type="button"
+                className="touch-dpad-btn touch-dpad-up"
+                aria-label="Rotar"
+                onTouchStart={touchAction(() => actionsRef.current?.rotate())}
+              >
+                <span className="touch-dpad-glyph">↻</span>
+              </button>
+              <button
+                type="button"
+                className="touch-dpad-btn touch-dpad-left"
+                aria-label="Mover a la izquierda"
+                onTouchStart={touchAction(() => actionsRef.current?.moveLeft())}
+              >
+                <svg className="touch-dpad-arrow" viewBox="0 0 24 24">
+                  <path d="M16 4 L16 20 L4 12 Z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="touch-dpad-btn touch-dpad-right"
+                aria-label="Mover a la derecha"
+                onTouchStart={touchAction(() =>
+                  actionsRef.current?.moveRight(),
+                )}
+              >
+                <svg className="touch-dpad-arrow" viewBox="0 0 24 24">
+                  <path d="M8 4 L20 12 L8 20 Z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="touch-dpad-btn touch-dpad-down"
+                aria-label="Bajar"
+                onTouchStart={touchAction(() => actionsRef.current?.softDrop())}
+              >
+                <svg className="touch-dpad-arrow" viewBox="0 0 24 24">
+                  <path d="M4 8 L20 8 L12 20 Z" />
+                </svg>
+              </button>
+              <div className="touch-dpad-hub" aria-hidden="true">
+                <span className="touch-dpad-hub-gem"></span>
+              </div>
+            </div>
+            <div className="touch-actions">
+              <button
+                type="button"
+                className="touch-action-btn a"
+                aria-label="Caída rápida"
+                onTouchStart={touchAction(() => actionsRef.current?.hardDrop())}
+              >
+                <span className="touch-action-ring" aria-hidden="true"></span>
+                <span className="touch-action-label">CAÍDA</span>
+              </button>
+            </div>
+          </div>
         </div>
       </>
     );

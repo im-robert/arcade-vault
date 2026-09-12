@@ -705,38 +705,54 @@ const AsteroidsGame = forwardRef<AsteroidsGameHandle, AsteroidsGameProps>(
           style={{ width: "100%", height: "100%", display: "block" }}
         />
         <div className="touch-controls">
-          <button
-            type="button"
-            className="touch-btn"
-            aria-label="Rotar a la izquierda"
-            {...touchHandlers("ArrowLeft")}
-          >
-            ◀
-          </button>
-          <button
-            type="button"
-            className="touch-btn"
-            aria-label="Rotar a la derecha"
-            {...touchHandlers("ArrowRight")}
-          >
-            ▶
-          </button>
-          <button
-            type="button"
-            className="touch-btn"
-            aria-label="Propulsar"
-            {...touchHandlers("ArrowUp")}
-          >
-            ▲
-          </button>
-          <button
-            type="button"
-            className="touch-btn fire"
-            aria-label="Disparar"
-            {...touchHandlers("Space")}
-          >
-            FUEGO
-          </button>
+          <div className="touch-controls-panel">
+            <div className="touch-dpad" aria-label="Mover nave">
+              <button
+                type="button"
+                className="touch-dpad-btn touch-dpad-up"
+                aria-label="Propulsar"
+                {...touchHandlers("ArrowUp")}
+              >
+                <svg className="touch-dpad-arrow" viewBox="0 0 24 24">
+                  <path d="M12 4 L20 16 L4 16 Z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="touch-dpad-btn touch-dpad-left"
+                aria-label="Rotar a la izquierda"
+                {...touchHandlers("ArrowLeft")}
+              >
+                <svg className="touch-dpad-arrow" viewBox="0 0 24 24">
+                  <path d="M16 4 L16 20 L4 12 Z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="touch-dpad-btn touch-dpad-right"
+                aria-label="Rotar a la derecha"
+                {...touchHandlers("ArrowRight")}
+              >
+                <svg className="touch-dpad-arrow" viewBox="0 0 24 24">
+                  <path d="M8 4 L20 12 L8 20 Z" />
+                </svg>
+              </button>
+              <div className="touch-dpad-hub" aria-hidden="true">
+                <span className="touch-dpad-hub-gem"></span>
+              </div>
+            </div>
+            <div className="touch-actions">
+              <button
+                type="button"
+                className="touch-action-btn a"
+                aria-label="Disparar"
+                {...touchHandlers("Space")}
+              >
+                <span className="touch-action-ring" aria-hidden="true"></span>
+                <span className="touch-action-label">FUEGO</span>
+              </button>
+            </div>
+          </div>
         </div>
       </>
     );

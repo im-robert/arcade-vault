@@ -22,6 +22,10 @@ import SnakeGame, {
   type SnakeGameHandle,
   type SnakeHudState,
 } from "@/components/games/SnakeGame";
+import FroggerGame, {
+  type FroggerGameHandle,
+  type FroggerHudState,
+} from "@/components/games/FroggerGame";
 import {
   SKIN_LABELS,
   getStoredSkin,
@@ -42,6 +46,7 @@ export default function GamePlayerPage({
   const isCaida = game?.id === "caida";
   const isArkanoid = game?.id === "bloque-buster";
   const isSnake = game?.id === "serpentina";
+  const isFrogger = game?.id === "ranaria";
 
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
@@ -55,6 +60,7 @@ export default function GamePlayerPage({
   const caidaRef = useRef<CaidaGameHandle>(null);
   const arkanoidRef = useRef<ArkanoidGameHandle>(null);
   const snakeRef = useRef<SnakeGameHandle>(null);
+  const froggerRef = useRef<FroggerGameHandle>(null);
   const initialsInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -130,6 +136,13 @@ export default function GamePlayerPage({
     if (hud.status === "gameover") setOver(true);
   };
 
+  const handleFroggerHud = (hud: FroggerHudState) => {
+    setScore(hud.score);
+    setLives(hud.lives);
+    setLevel(hud.level);
+    if (hud.status === "gameover") setOver(true);
+  };
+
   const restart = () => {
     setScore(0);
     setLives(3);
@@ -141,6 +154,7 @@ export default function GamePlayerPage({
     caidaRef.current?.restart();
     arkanoidRef.current?.restart();
     snakeRef.current?.restart();
+    froggerRef.current?.restart();
   };
 
   const handleSaveScore = async () => {
@@ -172,7 +186,7 @@ export default function GamePlayerPage({
           </div>
         </div>
         <div className="hud-actions">
-          {(isAsteroids || isSnake || isArkanoid) && (
+          {(isAsteroids || isSnake || isArkanoid || isFrogger) && (
             <select
               aria-label="Skin visual"
               value={skin}
@@ -197,11 +211,15 @@ export default function GamePlayerPage({
           <button className="btn yellow" onClick={() => setPaused((p) => !p)}>
             {paused ? "REANUDAR" : "PAUSA"}
           </button>
-          {!isAsteroids && !isCaida && !isArkanoid && !isSnake && (
-            <button className="btn magenta" onClick={simulateGame}>
-              SIMULAR PARTIDA
-            </button>
-          )}
+          {!isAsteroids &&
+            !isCaida &&
+            !isArkanoid &&
+            !isSnake &&
+            !isFrogger && (
+              <button className="btn magenta" onClick={simulateGame}>
+                SIMULAR PARTIDA
+              </button>
+            )}
           <button
             className="btn ghost"
             onClick={() => router.push(`/juego/${game.id}`)}
@@ -239,6 +257,13 @@ export default function GamePlayerPage({
               paused={paused}
               skin={skin}
               onHudChange={handleSnakeHud}
+            />
+          ) : isFrogger ? (
+            <FroggerGame
+              ref={froggerRef}
+              paused={paused}
+              skin={skin}
+              onHudChange={handleFroggerHud}
             />
           ) : (
             <div className="game-arena">
@@ -292,6 +317,7 @@ export default function GamePlayerPage({
         {isSnake && (
           <div className="crt-keys-hint">← → ↑ ↓ MOVER LA SERPIENTE</div>
         )}
+        {isFrogger && <div className="crt-keys-hint">← → ↑ ↓ SALTAR</div>}
       </div>
 
       {over && (

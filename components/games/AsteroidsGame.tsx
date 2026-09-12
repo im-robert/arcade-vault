@@ -39,6 +39,16 @@ const dist = (a: { x: number; y: number }, b: { x: number; y: number }) =>
   Math.hypot(a.x - b.x, a.y - b.y);
 const rand = (min: number, max: number) => min + Math.random() * (max - min);
 const randInt = (min: number, max: number) => Math.floor(rand(min, max + 1));
+// Elimina elementos "dead" in-place (swap-pop) para evitar crear un array
+// nuevo cada frame como hace Array.prototype.filter.
+function pruneDead<T extends { dead: boolean }>(list: T[]) {
+  for (let i = list.length - 1; i >= 0; i--) {
+    if (list[i].dead) {
+      list[i] = list[list.length - 1];
+      list.pop();
+    }
+  }
+}
 const withAlpha = (hex: string, alpha: number) => {
   const clean = hex.replace("#", "");
   const r = parseInt(clean.slice(0, 2), 16);
@@ -386,6 +396,7 @@ const AsteroidsGame = forwardRef<AsteroidsGameHandle, AsteroidsGameProps>(
     const initGameRef = useRef<() => void>(() => {});
     const keysRef = useRef<Record<string, boolean>>({});
     const justPressedRef = useRef<Record<string, boolean>>({});
+    const lastHudRef = useRef<AsteroidsHudState | null>(null);
 
     useEffect(() => {
       pausedRef.current = paused;
@@ -426,6 +437,27 @@ const AsteroidsGame = forwardRef<AsteroidsGameHandle, AsteroidsGameProps>(
       window.addEventListener("keydown", onKeyDown);
       window.addEventListener("keyup", onKeyUp);
 
+      function reportHud(engine: Engine) {
+        const prev = lastHudRef.current;
+        if (
+          prev &&
+          prev.score === engine.score &&
+          prev.lives === engine.lives &&
+          prev.level === engine.level &&
+          prev.status === engine.state
+        ) {
+          return;
+        }
+        const hud: AsteroidsHudState = {
+          score: engine.score,
+          lives: engine.lives,
+          level: engine.level,
+          status: engine.state,
+        };
+        lastHudRef.current = hud;
+        onHudChangeRef.current(hud);
+      }
+
       function spawnAsteroids(engine: Engine, count: number) {
         const SAFE_DIST = 130;
         for (let i = 0; i < count; i++) {
@@ -455,12 +487,8 @@ const AsteroidsGame = forwardRef<AsteroidsGameHandle, AsteroidsGameProps>(
         };
         spawnAsteroids(engine, 4);
         engineRef.current = engine;
-        onHudChangeRef.current({
-          score: engine.score,
-          lives: engine.lives,
-          level: engine.level,
-          status: engine.state,
-        });
+        lastHudRef.current = null;
+        reportHud(engine);
       }
       initGameRef.current = initGame;
 
@@ -495,14 +523,14 @@ const AsteroidsGame = forwardRef<AsteroidsGameHandle, AsteroidsGameProps>(
       function update(engine: Engine, dt: number) {
         if (engine.state === "gameover") {
           engine.particles.forEach((p) => p.update(dt));
-          engine.particles = engine.particles.filter((p) => !p.dead);
+          pruneDead(engine.particles);
           return;
         }
 
         if (engine.state === "dead") {
           engine.deadTimer -= dt;
           engine.particles.forEach((p) => p.update(dt));
-          engine.particles = engine.particles.filter((p) => !p.dead);
+          pruneDead(engine.particles);
           engine.asteroids.forEach((a) => a.update(dt));
           if (engine.deadTimer <= 0) {
             engine.state = "playing";
@@ -522,9 +550,9 @@ const AsteroidsGame = forwardRef<AsteroidsGameHandle, AsteroidsGameProps>(
         engine.particles.forEach((p) => p.update(dt));
         engine.powerUps.forEach((p) => p.update(dt));
 
-        engine.bullets = engine.bullets.filter((b) => !b.dead);
-        engine.particles = engine.particles.filter((p) => !p.dead);
-        engine.powerUps = engine.powerUps.filter((p) => !p.dead);
+        pruneDead(engine.bullets);
+        pruneDead(engine.particles);
+        pruneDead(engine.powerUps);
 
         for (const p of engine.powerUps) {
           if (!p.dead && dist(engine.ship, p) < engine.ship.radius + p.radius) {
@@ -554,10 +582,9 @@ const AsteroidsGame = forwardRef<AsteroidsGameHandle, AsteroidsGameProps>(
             }
           }
         }
-        engine.asteroids = engine.asteroids
-          .filter((a) => !a.dead)
-          .concat(newAsteroids);
-        engine.bullets = engine.bullets.filter((b) => !b.dead);
+        pruneDead(engine.asteroids);
+        if (newAsteroids.length) engine.asteroids.push(...newAsteroids);
+        pruneDead(engine.bullets);
 
         // Nave vs asteroide
         if (engine.ship.invincible <= 0) {
@@ -642,12 +669,7 @@ const AsteroidsGame = forwardRef<AsteroidsGameHandle, AsteroidsGameProps>(
             lastTime = ts;
             update(engine, dt);
             draw(engine);
-            onHudChangeRef.current({
-              score: engine.score,
-              lives: engine.lives,
-              level: engine.level,
-              status: engine.state,
-            });
+            reportHud(engine);
           }
         }
         rafId = requestAnimationFrame(loop);

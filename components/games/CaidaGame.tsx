@@ -181,12 +181,65 @@ const CaidaGame = forwardRef<CaidaGameHandle, CaidaGameProps>(
       if (!ctx2d) return;
       const ctx: CanvasRenderingContext2D = ctx2d;
 
+      // Cache board grid lines: static, drawn once instead of ~28 strokes/frame.
+      const gridCanvas = document.createElement("canvas");
+      gridCanvas.width = COLS * BLOCK;
+      gridCanvas.height = ROWS * BLOCK;
+      const gridCtx = gridCanvas.getContext("2d");
+      if (gridCtx) {
+        gridCtx.strokeStyle = "rgba(255,255,255,0.08)";
+        gridCtx.lineWidth = 0.5;
+        for (let c = 1; c < COLS; c++) {
+          gridCtx.beginPath();
+          gridCtx.moveTo(c * BLOCK, 0);
+          gridCtx.lineTo(c * BLOCK, ROWS * BLOCK);
+          gridCtx.stroke();
+        }
+        for (let r = 1; r < ROWS; r++) {
+          gridCtx.beginPath();
+          gridCtx.moveTo(0, r * BLOCK);
+          gridCtx.lineTo(COLS * BLOCK, r * BLOCK);
+          gridCtx.stroke();
+        }
+      }
+
+      // Cache sidebar static labels: text never changes between frames.
+      const sidebarLabelsCanvas = document.createElement("canvas");
+      sidebarLabelsCanvas.width = W - SIDEBAR_X;
+      sidebarLabelsCanvas.height = H;
+      const sidebarLabelsCtx = sidebarLabelsCanvas.getContext("2d");
+      if (sidebarLabelsCtx) {
+        sidebarLabelsCtx.textAlign = "left";
+        sidebarLabelsCtx.fillStyle = "#fff";
+        sidebarLabelsCtx.font = "bold 14px monospace";
+        sidebarLabelsCtx.fillText("SCORE", 0, 40);
+        sidebarLabelsCtx.fillText("LÍNEAS", 0, 106);
+        sidebarLabelsCtx.fillText("NIVEL", 0, 172);
+        sidebarLabelsCtx.fillText("SIGUIENTE", 0, 238);
+      }
+
+      const lastHud: { score: number; level: number; status: string } = {
+        score: -1,
+        level: -1,
+        status: "",
+      };
+
       function reportHud(engine: Engine) {
+        const status = engine.gameOver ? "gameover" : "playing";
+        if (
+          lastHud.score === engine.score &&
+          lastHud.level === engine.level &&
+          lastHud.status === status
+        )
+          return;
+        lastHud.score = engine.score;
+        lastHud.level = engine.level;
+        lastHud.status = status;
         onHudChangeRef.current({
           score: engine.score,
           lives: 1,
           level: engine.level,
-          status: engine.gameOver ? "gameover" : "playing",
+          status,
         });
       }
 
@@ -203,6 +256,9 @@ const CaidaGame = forwardRef<CaidaGameHandle, CaidaGameProps>(
           gameOver: false,
         };
         engineRef.current = engine;
+        lastHud.score = -1;
+        lastHud.level = -1;
+        lastHud.status = "";
         reportHud(engine);
       }
       initGameRef.current = initGame;
@@ -379,20 +435,7 @@ const CaidaGame = forwardRef<CaidaGameHandle, CaidaGameProps>(
       }
 
       function drawGrid() {
-        ctx.strokeStyle = "rgba(255,255,255,0.08)";
-        ctx.lineWidth = 0.5;
-        for (let c = 1; c < COLS; c++) {
-          ctx.beginPath();
-          ctx.moveTo(c * BLOCK, 0);
-          ctx.lineTo(c * BLOCK, ROWS * BLOCK);
-          ctx.stroke();
-        }
-        for (let r = 1; r < ROWS; r++) {
-          ctx.beginPath();
-          ctx.moveTo(0, r * BLOCK);
-          ctx.lineTo(COLS * BLOCK, r * BLOCK);
-          ctx.stroke();
-        }
+        ctx.drawImage(gridCanvas, 0, 0);
       }
 
       function drawBoard(engine: Engine) {
@@ -439,25 +482,14 @@ const CaidaGame = forwardRef<CaidaGameHandle, CaidaGameProps>(
       }
 
       function drawSidebar(engine: Engine) {
+        ctx.drawImage(sidebarLabelsCanvas, SIDEBAR_X, 0);
+
         ctx.textAlign = "left";
         ctx.fillStyle = "#fff";
-        ctx.font = "bold 14px monospace";
-        ctx.fillText("SCORE", SIDEBAR_X, 40);
         ctx.font = "20px monospace";
         ctx.fillText(engine.score.toLocaleString(), SIDEBAR_X, 66);
-
-        ctx.font = "bold 14px monospace";
-        ctx.fillText("LÍNEAS", SIDEBAR_X, 106);
-        ctx.font = "20px monospace";
         ctx.fillText(String(engine.lines), SIDEBAR_X, 132);
-
-        ctx.font = "bold 14px monospace";
-        ctx.fillText("NIVEL", SIDEBAR_X, 172);
-        ctx.font = "20px monospace";
         ctx.fillText(String(engine.level), SIDEBAR_X, 198);
-
-        ctx.font = "bold 14px monospace";
-        ctx.fillText("SIGUIENTE", SIDEBAR_X, 238);
 
         const NB = 26;
         const boxSize = 4 * NB;

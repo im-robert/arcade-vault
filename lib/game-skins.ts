@@ -162,6 +162,122 @@ export const ARKANOID_SKINS: Record<GameSkin, ArkanoidPalette> = {
   },
 };
 
+export interface FroggerPalette {
+  roadBackground: string;
+  riverBackground: string;
+  safeBackground: string;
+  goalBackground: string;
+  goalFilledBackground: string;
+  goalBorder: string;
+  goalFlag: string;
+  carColors: string[];
+  carWheel: string;
+  truckBody: string;
+  truckAccent: string;
+  truckWheel: string;
+  log: string;
+  logGrain: string;
+  turtle: string;
+  turtleSpot: string;
+  turtleSubmerged: string;
+  frog: string;
+  frogLeg: string;
+  hud: string;
+  hudGlow: string;
+  timeBarGood: string;
+  timeBarWarn: string;
+  timeBarBad: string;
+  overlay: string;
+  overlayText: string;
+}
+
+export const FROGGER_SKINS: Record<GameSkin, FroggerPalette> = {
+  neon: {
+    roadBackground: "#08010f",
+    riverBackground: "#03123a",
+    safeBackground: "#031a24",
+    goalBackground: "#04241a",
+    goalFilledBackground: "#031712",
+    goalBorder: "#00ffe0",
+    goalFlag: "#39ff6a",
+    carColors: ["#ff2b6d", "#faff00", "#00e0ff"],
+    carWheel: "#000000",
+    truckBody: "#a3a3ff",
+    truckAccent: "#6a2bff",
+    truckWheel: "#000000",
+    log: "#ff9d2b",
+    logGrain: "#c96a00",
+    turtle: "#00ffb0",
+    turtleSpot: "#00b37e",
+    turtleSubmerged: "rgba(0, 255, 176, 0.35)",
+    frog: "#39ff6a",
+    frogLeg: "#00ffb0",
+    hud: "#fff",
+    hudGlow: "rgba(0, 255, 255, 0.5)",
+    timeBarGood: "#39ff6a",
+    timeBarWarn: "#faff00",
+    timeBarBad: "#ff2b6d",
+    overlay: "rgba(0, 0, 0, 0.6)",
+    overlayText: "#fff",
+  },
+  retro: {
+    roadBackground: "#1a140e",
+    riverBackground: "#0e2a30",
+    safeBackground: "#241b0a",
+    goalBackground: "#1a2712",
+    goalFilledBackground: "#121c0d",
+    goalBorder: "#d1a54a",
+    goalFlag: "#e0a83c",
+    carColors: ["#c9622f", "#d9a441", "#4a8a94"],
+    carWheel: "#241a12",
+    truckBody: "#8a7a52",
+    truckAccent: "#5a4a2f",
+    truckWheel: "#241a12",
+    log: "#7a4a26",
+    logGrain: "#4a2e16",
+    turtle: "#6a9456",
+    turtleSpot: "#3d5c34",
+    turtleSubmerged: "rgba(122, 190, 196, 0.35)",
+    frog: "#c9d95a",
+    frogLeg: "#8fae42",
+    hud: "#e0a83c",
+    hudGlow: "transparent",
+    timeBarGood: "#e0a83c",
+    timeBarWarn: "#c9822a",
+    timeBarBad: "#8a3a1c",
+    overlay: "rgba(10, 8, 4, 0.78)",
+    overlayText: "#e0a83c",
+  },
+  clasico: {
+    roadBackground: "#111111",
+    riverBackground: "#02182e",
+    safeBackground: "#0a2b12",
+    goalBackground: "#124a20",
+    goalFilledBackground: "#123a1c",
+    goalBorder: "#d4af37",
+    goalFlag: "#39ff6a",
+    carColors: ["#ff3b3b", "#ffd23b", "#3b8bff"],
+    carWheel: "#111111",
+    truckBody: "#8a8a8a",
+    truckAccent: "#5a5a5a",
+    truckWheel: "#111111",
+    log: "#7a4a24",
+    logGrain: "#5a3418",
+    turtle: "#2f9e4f",
+    turtleSpot: "#1f7a38",
+    turtleSubmerged: "rgba(60, 160, 90, 0.35)",
+    frog: "#39ff6a",
+    frogLeg: "#2ecc59",
+    hud: "#ffffff",
+    hudGlow: "transparent",
+    timeBarGood: "#39ff6a",
+    timeBarWarn: "#ffd23b",
+    timeBarBad: "#ff3b3b",
+    overlay: "rgba(0,0,0,0.55)",
+    overlayText: "#ffffff",
+  },
+};
+
 export const ASTEROIDS_SKINS: Record<GameSkin, AsteroidsPalette> = {
   neon: {
     background: "#05010c",

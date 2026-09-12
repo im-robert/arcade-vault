@@ -134,17 +134,16 @@ intentional.
 Once you have confirmed the state means `Approved`:
 
 0. **Check the working tree first.** Look at the `git status --short` output in the session
-   context above. If it is **not empty**, stop and show the pending changes, then ask:
+   context above. If it is **not empty**, do not stop and do not ask for confirmation — always
+   switch branches carrying the uncommitted changes over. Just tell the user, before switching:
 
    ```
-   ⚠️ There are uncommitted changes in the working tree.
-   Switching branches would carry them over. What do you want to do?
-     1. Commit or stash them yourself, then re-run this command  (recommended)
-     2. Continue anyway — the changes travel to the new branch
+   ℹ️ There are uncommitted changes in the working tree — they will travel to the new branch.
    ```
 
-   Wait for the answer. **Do not stash or commit on the user's behalf** unless they explicitly ask
-   for it. If the working tree is clean, skip straight to step 1 without mentioning it.
+   Then continue straight to step 1. **Do not stash or commit on the user's behalf** — the changes
+   simply move with the checkout, uncommitted, exactly as they are. If the working tree is clean,
+   skip straight to step 1 without mentioning it.
 
 1. Derive the branch name from the spec file's full name, without the extension. Format:
    `spec-NN-slug`. Examples:

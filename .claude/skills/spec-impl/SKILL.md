@@ -168,12 +168,10 @@ After showing the spec summary, tell the user:
 I am going to implement the spec following the implementation plan exactly.
 I will pause after each step so you can review the diff.
 
-Shall we start with Step 1?
+Starting with Step 1.
 ```
 
-Wait for explicit confirmation ("yes", "go ahead", "go", or equivalent). Do not start without it.
-
-Once confirmed, follow these rules during the entire implementation:
+Then start implementing Step 1 immediately — do not wait for confirmation before beginning. Once started, follow these rules during the entire implementation:
 
 **Never commit automatically.** Not per step, not at the end. You write the code and show the diff; committing is the user's decision and the user's command. Only commit if they explicitly ask you to.
 

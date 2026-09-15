@@ -20,6 +20,8 @@ The specs written so far live in `specs/` and are the canonical record of every 
 - `06-leaderboard-catalogo-supabase.md` — catalog + scores moved to Supabase.
 - `07-integrar-juego-invasores.md` — real engine for `invasores` (Borrador/draft, not yet implemented).
 - `08-controles-tactiles-movil.md` — touch ergonomics pass for the player route (Aprobado).
+- `09-autenticacion-supabase.md` — real Supabase Auth (email/password + Google/GitHub), `profiles` table, `scores.user_id` (Aprobado).
+- `10-medidas-seguridad-checklist.md` — security checklist: revoke `EXECUTE` on orphaned `SECURITY DEFINER` functions, HTTP security headers, client-side password length validation, `middleware.ts` → `proxy.ts` (Aprobado).
 - `game-jam/` — output of the `game-jam` agent: per-topic subfolders with paired design + implementation specs (e.g. `game-jam/frogger/frogger-core.md`, the spec behind the Frogger engine).
 
 Read the relevant spec before touching an area it covers.
@@ -51,7 +53,7 @@ Per-engine color skins (neón/retro/clásico) are a separate layer on top of thi
 - `salon-de-la-fama/page.tsx` — hall of fame, tabbed by game.
 - `auth/page.tsx` — sign in/up (still local-only: writes `av_user` to `localStorage`, no Supabase Auth).
 - `acerca-de/page.tsx` + `api/contact/route.ts` — about page and contact form, sent with Resend.
-- `middleware.ts` → `lib/supabase/middleware.ts` — Supabase session refresh on every non-static request.
+- `proxy.ts` (Next.js 16's renamed `middleware.ts` convention) → `lib/supabase/middleware.ts` — Supabase session refresh on every non-static request.
   See `references/games-catalog.md` when you need to check the games that are implemented and how implement the new ones.
 
 ### Data layer (`lib/`)
@@ -87,6 +89,8 @@ Env vars (see `.env.example`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE
 - `references/gamepad-assets/` — standalone neon gamepad component (`gamepad.html`) used as a design reference for touch/keyboard controls; not wired into the app.
 - `references/games-catalog.md` — hand-maintained mirror of the Supabase `games` table.
 - `references/game-suggestions.md` — persistent memory of the `game-planner` agent: every game suggested, its verdict and why. Read it before proposing a new game; never delete entries.
+- `references/security/security_checklist.md` — hand-maintained snapshot of the security checklist behind SPEC 10; the live source of truth is `mcp__supabase__get_advisors`, not this file.
+- `references/security/security-audit-log.md` — persistent, read-only report log of the `security-auditor` agent: every audit run, its findings, classification, and the recommended fix as text (never applied). Read it before auditing again; never delete entries.
 - `demos/demo.tsx` — scratch demo, not part of the app.
 
 ## Agents
@@ -98,6 +102,7 @@ Project agents in `.claude/agents/`:
 - `mobile-porter` — audits/fixes touch ergonomics of the player route for the real-engine games (SPEC 08).
 - `skin-designer` — verifies/implements the neón/retro/clásico skins of a single named game.
 - `game-performance-booster` — audits/fixes render/compute performance of a single named real-engine game, never its game logic.
+- `security-auditor` — read-only: audits app (headers, validations, auth routes, secrets) and Supabase (RLS, advisors, `SECURITY DEFINER` grants) security, per SPEC 09/10. Never edits code, never writes to the database (`SELECT`-only + advisors); the only file it touches is `references/security/security-audit-log.md`, where recommended fixes are written as text, never applied.
 
 None of these write engine code or migrations outside their stated scope — hand catalog/engine implementation to `/spec-impl` or `/add-game`.
 

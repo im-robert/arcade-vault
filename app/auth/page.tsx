@@ -51,6 +51,11 @@ export default function AuthPage() {
       return;
     }
 
+    if (pass.length < 8) {
+      setError("La contraseña debe tener al menos 8 caracteres");
+      return;
+    }
+
     if (pass !== passConfirm) {
       setError("Las contraseñas no coinciden");
       return;
@@ -239,6 +244,7 @@ export default function AuthPage() {
                 value={pass}
                 onChange={(e) => setPass(e.target.value)}
                 placeholder="••••••••"
+                minLength={tab === "up" ? 8 : undefined}
               />
               <button
                 type="button"

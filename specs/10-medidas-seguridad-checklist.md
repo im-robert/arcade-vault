@@ -28,6 +28,7 @@
 - Validación en el cliente de longitud mínima de contraseña (8 caracteres) en el formulario de registro de `app/auth/page.tsx`: atributo `minLength={8}` en el input y mensaje de error en español antes de llamar a `signUpWithPassword` si no cumple.
 - Documentar en esta spec, como checklist manual para quien la implemente, los tres ajustes de Supabase Auth que deben activarse desde el dashboard del proyecto (ver Plan de implementación, paso 4).
 - Verificación final con `mcp__supabase__get_advisors` (tipo `security`) para confirmar que los dos hallazgos de `SECURITY DEFINER` desaparecen.
+- Migrar la convención de archivo `middleware.ts` (raíz) a `proxy.ts` — Next.js 16.2.12 deprecó `middleware` en favor de `proxy` (confirmado por el warning de build y por `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md`). Solo renombra el archivo y la función exportada (`middleware` → `proxy`); mantiene el mismo `matcher` y sigue llamando a `updateSession` de `lib/supabase/middleware.ts` sin cambios de lógica.
 
 **Fuera (para specs futuras o pasos manuales sin código):**
 
@@ -37,6 +38,7 @@
 - Content-Security-Policy (CSP) — no está en el checklist y requeriría un ajuste fino por recurso (scripts, estilos, fuentes) con pruebas exhaustivas antes de habilitarlo sin riesgo de romper la app.
 - Cualquier otro hallazgo de `get_advisors` (tipo `security` o `performance`) que no esté listado arriba y que aparezca en el futuro — se atiende en su propia spec.
 - Protección de rutas de página vía middleware exigiendo sesión iniciada — hoy no existe ninguna ruta que deba requerir cuenta (SPEC 09 mantiene el modo invitado en todo el catálogo/juegos/hall of fame); se retoma en una spec futura cuando exista una ruta concreta que lo necesite (p. ej. una pantalla de perfil).
+- Cambios de lógica en `lib/supabase/middleware.ts` (`updateSession`) — solo se renombra el archivo/función de convención en la raíz (`middleware.ts` → `proxy.ts`), no su implementación interna.
 
 ## Modelo de datos
 
@@ -62,6 +64,7 @@ Convenciones:
    - Leaked password protection: habilitada.
    - Rate limit de signups por IP: usar el valor por defecto de Supabase Auth o ajustarlo según el tráfico esperado.
 5. **Verificación.** Correr `mcp__supabase__get_advisors` (tipo `security`) y confirmar que `anon_security_definer_function_executable` y `authenticated_security_definer_function_executable` ya no aparecen (el hallazgo de `auth_leaked_password_protection` seguirá apareciendo hasta que se complete el paso manual 4, lo cual es esperado). Correr `npm run build` y `npm run lint`. Verificar manualmente en el navegador (DevTools → Network → Headers de la respuesta) que los 4 headers del paso 2 están presentes. Verificar manualmente que el formulario de registro rechaza una contraseña de menos de 8 caracteres antes de enviarla.
+6. **Migración a `proxy.ts`.** Renombrar `middleware.ts` a `proxy.ts`, renombrar la función exportada `middleware` a `proxy`, manteniendo el mismo `matcher` y la misma llamada a `updateSession`. Correr `npm run build` de nuevo y confirmar que el warning de deprecación ya no aparece.
 
 ## Criterios de aceptación
 
@@ -71,6 +74,7 @@ Convenciones:
 - [ ] El formulario de registro en `/auth` muestra un error en español y no llama a `signUpWithPassword` si la contraseña tiene menos de 8 caracteres.
 - [ ] El checklist manual de los 3 ajustes de Supabase Auth (longitud mínima, leaked password protection, rate limit de signups) queda documentado y comunicado como pendiente de activación en el dashboard.
 - [ ] `npm run build` y `npm run lint` pasan sin errores nuevos respecto al estado antes de esta spec.
+- [ ] `npm run build` ya no muestra el warning de deprecación de `middleware.ts`, y el refresco de sesión de Supabase sigue funcionando igual (verificado con login/logout manual).
 
 ## Decisiones
 

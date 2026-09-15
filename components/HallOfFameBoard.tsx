@@ -22,7 +22,13 @@ export default function HallOfFameBoard({
   const [user, setUser] = useState<AvUser | null>(null);
 
   useEffect(() => {
-    setUser(getUser());
+    let cancelled = false;
+    getUser().then((u) => {
+      if (!cancelled) setUser(u);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {

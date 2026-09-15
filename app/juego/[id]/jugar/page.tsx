@@ -54,6 +54,7 @@ export default function GamePlayerPage({
   const [paused, setPaused] = useState(false);
   const [over, setOver] = useState(false);
   const [name, setName] = useState("INVITADO");
+  const [userId, setUserId] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [skin, setSkin] = useState<GameSkin>("clasico");
   const asteroidsRef = useRef<AsteroidsGameHandle>(null);
@@ -64,9 +65,16 @@ export default function GamePlayerPage({
   const initialsInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const user = getUser();
-    setName(user ? user.name : "INVITADO");
+    let cancelled = false;
+    getUser().then((user) => {
+      if (cancelled) return;
+      setName(user ? user.name : "INVITADO");
+      setUserId(user ? user.id : null);
+    });
     setSkin(getStoredSkin());
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleSkinChange = (next: GameSkin) => {
@@ -158,7 +166,12 @@ export default function GamePlayerPage({
   };
 
   const handleSaveScore = async () => {
-    await saveScore({ game: game.id, score, name });
+    await saveScore({
+      game: game.id,
+      score,
+      name,
+      userId: userId ?? undefined,
+    });
     setSaved(true);
   };
 

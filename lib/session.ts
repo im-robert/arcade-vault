@@ -4,6 +4,7 @@ export interface AvUser {
   id: string;
   name: string;
   email: string;
+  avatarUrl: string | null;
 }
 
 export type OAuthProvider = "google" | "github";
@@ -43,6 +44,8 @@ export async function getUser(): Promise<AvUser | null> {
     id: user.id,
     name: profile?.username ?? user.email ?? "Jugador",
     email: user.email ?? "",
+    avatarUrl:
+      user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? null,
   };
 }
 
@@ -56,7 +59,7 @@ export async function signUpWithPassword({
   password: string;
 }): Promise<{ error: string | null }> {
   const supabase = createClient();
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -70,6 +73,14 @@ export async function signUpWithPassword({
       return { error: DUPLICATE_USERNAME_MESSAGE };
     }
     return { error: error.message };
+  }
+
+  // Supabase responde 200 sin mandar correo si el email ya tiene cuenta
+  // (protección anti-enumeración); lo detectamos por identities: [].
+  if (data.user && data.user.identities?.length === 0) {
+    return {
+      error: "Ese correo ya tiene una cuenta. Inicia sesión o usa otro.",
+    };
   }
 
   return { error: null };

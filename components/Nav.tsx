@@ -34,6 +34,8 @@ export default function Nav() {
 
   const close = () => setOpen(false);
 
+  const initials = (name: string) => name.trim().charAt(0).toUpperCase() || "?";
+
   const handleSignOut = async () => {
     await signOut();
     setUser(null);
@@ -75,7 +77,17 @@ export default function Nav() {
           <span>CRÉDITOS · 03</span>
         </div>
         {user ? (
-          <button className="btn ghost auth-btn" onClick={handleSignOut}>
+          <button
+            className="btn ghost auth-btn nav-account"
+            onClick={handleSignOut}
+          >
+            <span className="nav-avatar">
+              {user.avatarUrl ? (
+                <img src={user.avatarUrl} alt="" referrerPolicy="no-referrer" />
+              ) : (
+                initials(user.name)
+              )}
+            </span>
             {user.name} ▾
           </button>
         ) : (

@@ -21,6 +21,8 @@ export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [passConfirm, setPassConfirm] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [showPassConfirm, setShowPassConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -231,22 +233,48 @@ export default function AuthPage() {
           </div>
           <div className="field">
             <label>Contraseña</label>
-            <input
-              type="password"
-              value={pass}
-              onChange={(e) => setPass(e.target.value)}
-              placeholder="••••••••"
-            />
+            <div className="field-row">
+              <input
+                type={showPass ? "text" : "password"}
+                value={pass}
+                onChange={(e) => setPass(e.target.value)}
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                className="field-toggle"
+                onClick={() => setShowPass((v) => !v)}
+                aria-label={
+                  showPass ? "Ocultar contraseña" : "Mostrar contraseña"
+                }
+              >
+                {showPass ? "🙈" : "👁"}
+              </button>
+            </div>
           </div>
           {tab === "up" && (
             <div className="field slide-in">
               <label>Confirmar contraseña</label>
-              <input
-                type="password"
-                value={passConfirm}
-                onChange={(e) => setPassConfirm(e.target.value)}
-                placeholder="••••••••"
-              />
+              <div className="field-row">
+                <input
+                  type={showPassConfirm ? "text" : "password"}
+                  value={passConfirm}
+                  onChange={(e) => setPassConfirm(e.target.value)}
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  className="field-toggle"
+                  onClick={() => setShowPassConfirm((v) => !v)}
+                  aria-label={
+                    showPassConfirm
+                      ? "Ocultar contraseña"
+                      : "Mostrar contraseña"
+                  }
+                >
+                  {showPassConfirm ? "🙈" : "👁"}
+                </button>
+              </div>
             </div>
           )}
 

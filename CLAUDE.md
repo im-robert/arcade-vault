@@ -73,13 +73,25 @@ Every engine is a `"use client"` component following the same contract establish
 
 ### Supabase
 
-Project ref `swmezsmuwlavtbdtsstl`, reachable through the `supabase` MCP server (`.mcp.json`). Migrations in `supabase/migrations/`:
+**Two projects.** Dev — ref `swmezsmuwlavtbdtsstl`, reachable through the `supabase` MCP server (`.mcp.json`) — is the only one Claude/the agent ever touches. Prod is a separate, empty-by-design project that the agent has **no credentials or MCP access to**; every prod-facing step (applying SQL, dashboard/Auth config) is executed by the human, per `references/security/` conventions and the dev→prod migration this repo went through on 2026-09-16.
+
+Migrations in `supabase/migrations/`:
 
 - `20260816191454_games_and_scores.sql` — `games` + `scores` tables, RLS with public read and public insert on `scores`, seeded catalog.
 - `20260816232257_remove_seed_scores.sql` — removed the fake historical scores on purpose; new leaderboards start empty.
+- `20260830205414_rename_games_to_english.sql` — renames catalog titles to English (ARKANOID, TETRIS, PIXEL DUEL, GLUTTON, INVADERS, SNAKE); backfilled from dev's applied history, see `references/games-catalog.md`.
 - `20260912141638_update_ranaria_to_frogger.sql` — repurposed the existing `ranaria` catalog row into the real Frogger engine (title/short/long/cover/color updated in place; `id` stays `ranaria`, matched by `isFrogger` in the player page).
+- `20260913004454_auth_profiles_and_scores_user_id.sql` — `profiles` table (1:1 with `auth.users`), `handle_new_user()` trigger, `scores.user_id`.
+- `20260913005943_revoke_public_execute_handle_new_user.sql` — revokes `EXECUTE` on `handle_new_user()` from `public`/`anon`/`authenticated`.
+- `20260915010304_create_rls_auto_enable.sql` — creates `rls_auto_enable()` + event trigger `ensure_rls` (auto-enables RLS on new `public` tables). Backfilled: existed in dev outside the migration flow; must precede the next file or it fails on a fresh project.
+- `20260915010305_revoke_rls_auto_enable_execute.sql` — revokes `EXECUTE` on `rls_auto_enable()` from `public`/`anon`/`authenticated`.
+- `20260916120000_perf_and_rls_advisors.sql` — closes the `get_advisors` findings: `profiles_select_own` wrapped in `(select auth.uid())`, indexes on `scores.game_id`/`scores.user_id`.
 
-Env vars (see `.env.example`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `RESEND_API_KEY`, `CONTACT_TO_EMAIL`, `CONTACT_FROM_EMAIL`.
+`supabase/prod-bootstrap.sql` is a one-shot artifact (not a migration) that concatenates all of the above in order plus a `supabase_migrations.schema_migrations` bookkeeping insert, meant to be pasted once into the prod SQL Editor to bring a fresh prod project to parity with dev. Never run it against dev.
+
+**Workflow from now on:** author the migration file → apply it to **dev** via `mcp__supabase__apply_migration` → read back the version it minted and rename the file to match if needed → commit → apply the same file to **prod** by pasting it into prod's SQL Editor and inserting its version into `supabase_migrations.schema_migrations` (human-only step). Never edit a migration that has already been applied anywhere — add a new one instead.
+
+Env vars (see `.env.example`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `RESEND_API_KEY`, `CONTACT_TO_EMAIL`, `CONTACT_FROM_EMAIL`. Both `NEXT_PUBLIC_SUPABASE_*` vars differ per project — dev's values live in `.env.local`, prod's live only in the hosting's environment settings, never in this repo.
 
 ### References (`references/`)
 
@@ -120,6 +132,8 @@ Project skills in `.claude/skills/` (all `disable-model-invocation`, invoke expl
 - Never seed fake scores into `scores`.
 - Never bypass `saveScore` from inside a game engine.
 - Never touch an engine or catalog row other than the one you were asked about.
+- Never request, store, or use credentials/MCP access for the prod Supabase project — every prod-facing step is executed by the human.
+- Never edit a migration file that has already been applied to dev or prod — add a new one instead.
 
 ## Important: non-standard Next.js version
 

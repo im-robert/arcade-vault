@@ -43,6 +43,10 @@ yarn-error.log*
 # secretos sueltos
 apiKEY.md
 
+# supabase CLI (lo genera `supabase link`; guarda el ref y la pooler url del
+# proyecto vinculado — nunca debe llegar a git)
+supabase/.temp/
+
 # vercel
 .vercel
 

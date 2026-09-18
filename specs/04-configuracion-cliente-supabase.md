@@ -45,6 +45,8 @@ export async function updateSession(
 
 Variables de entorno (públicas, expuestas al cliente vía prefijo `NEXT_PUBLIC_`):
 
+> **Nota (2026-09-16):** los valores de abajo son los del proyecto **DEV** (`swmezsmuwlavtbdtsstl`) y quedan como registro histórico de esta spec. Desde la migración a producción hay dos proyectos Supabase; los valores reales de cada entorno viven en `.env.local` (dev) y en las variables de entorno del hosting (prod) — ver `CLAUDE.md`, sección Supabase.
+
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://swmezsmuwlavtbdtsstl.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_6q-DPTTPDOH2mqrKbANeHg_IHqDyjga

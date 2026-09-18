@@ -79,3 +79,58 @@ SPEC 10 (checklist de seguridad) ya aprobadas e implementadas; migración
   - **High:** `nanoid` (`<3.3.18`) — generadores custom pueden entrar en loop infinito con `size` cero.
 - **Clasificación:** Requiere decisión/spec nueva.
 - **Notas:** El fix de `next`/`postcss`/`sharp` requiere `next@16.3.5`, fuera del rango pinneado (`16.2.12`) que `AGENTS.md`/`CLAUDE.md` documentan explícitamente como versión no estándar con posibles breaking changes. Subir de versión es una decisión de alcance (evaluar breaking changes en Next 16.3.x) y no algo que este agente de auditoría deba ni pueda ejecutar — se recomienda abrir `/spec` para planificar el upgrade, dada la severidad "critical" del RCE. `nanoid` tiene fix disponible vía `npm audit fix` sin cambios de rango (no requiere `--force`), pero por contrato este agente no ejecuta `npm audit fix` ni ningún comando de escritura.
+
+## 2026-09-16
+
+Segunda entrada. Auditoría solicitada con foco específico en **autenticación**
+(`SPEC 09`). Línea base sin cambios de código ni de migraciones desde la
+entrada anterior (`git status` limpio, mismas 6 migraciones en
+`list_migrations`, mismo advisor en vivo).
+
+### Confirmaciones (sin cambios desde 2026-09-14)
+
+- **Origen:** advisor + SQL (`list_tables`, grants sobre `pg_proc`, `pg_policies`).
+- **Hallazgo:** RLS sigue habilitado en `games`/`scores`/`profiles`; `rls_auto_enable()` y `handle_new_user()` solo conceden `EXECUTE` a `postgres`/`service_role`; policies sin cambios (`games_public_read`, `scores_public_read`, `scores_public_insert` con `WITH CHECK (true)` intencional, `profiles_select_own`).
+- **Clasificación:** Descartado por diseño intencional (ya resuelto).
+
+- **Origen:** código (`next.config.ts`, `proxy.ts`, `lib/supabase/{client,server,middleware}.ts`, `app/auth/page.tsx`, `app/auth/nueva-password/page.tsx`, `app/auth/callback/route.ts`, `components/Nav.tsx`, `app/juego/[id]/jugar/page.tsx`).
+- **Hallazgo:** Los 4 headers de SPEC 10 siguen presentes; `proxy.ts` sigue exportando `proxy()`; los 3 clientes Supabase solo usan `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (grep de `service_role|SERVICE_ROLE_KEY|BEGIN PRIVATE KEY` sobre todo el repo solo encuentra el propio patrón de búsqueda en `.claude/agents/security-auditor.md` y en este log); `minLength={8}` + validación cliente siguen en el input de contraseña de registro; el flujo completo de SPEC 09 (registro, login, OAuth Google/GitHub vía `signInWithOAuth`, reset de contraseña vía `app/auth/callback/route.ts` + `app/auth/nueva-password/page.tsx`, `Nav` con sesión real y `signOut()`, `saveScore` recibiendo `userId` desde `getUser()` en la página de juego) está implementado end-to-end, contradiciendo el `CLAUDE.md` desactualizado que aún describe `/auth` como "local-only".
+- **Clasificación:** Descartado por diseño intencional (ya resuelto).
+
+### Hallazgos pendientes (ya conocidos, siguen abiertos, sin cambios)
+
+- **Origen:** advisor (`get_advisors`, tipo `security`).
+- **Hallazgo:** `auth_leaked_password_protection` sigue deshabilitada (único hallazgo que reporta el advisor en vivo en esta corrida).
+- **Clasificación:** Paso manual de dashboard.
+- **Arreglo sugerido (no aplicado):** Activar en el dashboard de Supabase → `Authentication` → `Policies`/`Providers` → "Leaked password protection". Junto con esto, longitud mínima de contraseña (8) y rate limit de signups por IP en el dashboard, tal como documenta SPEC 10, siguen sin verificarse (no son inspeccionables vía SQL/advisor).
+
+- **Origen:** código (`lib/session.ts`, `signUpWithPassword`).
+- **Hallazgo:** Sigue reintroduciendo la fuga de enumeración de correos ya reportada el 2026-09-14: el mensaje "Ese correo ya tiene una cuenta. Inicia sesión o usa otro." permite distinguir correos ya registrados.
+- **Clasificación:** Requiere decisión/spec nueva (sin cambios respecto a la entrada anterior).
+
+- **Origen:** código (`app/api/contact/route.ts`).
+- **Hallazgo:** Sigue sin límite de longitud en `name`/`email`/`message` ni rate limiting propio.
+- **Clasificación:** Requiere decisión/spec nueva (sin cambios respecto a la entrada anterior).
+
+- **Origen:** `npm audit --omit=dev`.
+- **Hallazgo:** Mismas 4 vulnerabilidades que el 2026-09-14 (critical en `next` dentro del rango pinneado 16.2.12, high en `postcss`/`sharp` transitivas de `next`, high en `nanoid`). Sin cambios.
+- **Clasificación:** Requiere decisión/spec nueva (sin cambios respecto a la entrada anterior).
+
+### Hallazgo nuevo de esta auditoría (foco auth)
+
+- **Origen:** código (`app/auth/callback/route.ts`), verificado con prueba local de parsing de URL (`new URL()`).
+- **Hallazgo:** **Open redirect** en la ruta de callback de autenticación. El parámetro `next` llega de `searchParams.get("next")` sin ninguna validación y se usa directo en `NextResponse.redirect(\`${origin}${next}\`)`. Al ser concatenación de strings (no `new URL(next, origin)`), un valor como `next=@evil.com`produce la URL final`https://<origin>@evil.com`, que el parser de URL (y por tanto el navegador) interpreta como *userinfo* `@`seguido del host real`evil.com`— es decir, el usuario termina redirigido a`evil.com`, no al propio dominio. Verificado programáticamente: `new URL("https://arcadevault.com" + "@evil.com").host === "evil.com"`. Este parámetro llega a esa ruta en los tres flujos de SPEC 09 que la usan (confirmación de email, login OAuth, recuperación de contraseña), y solo se dispara tras un intercambio de `code`exitoso, pero eso no impide que un atacante arme un enlace con su propio`code`válido (o abuse de un enlace legítimo reescrito) apuntando a`arcadevault.com/auth/callback?...&next=@evil.com` para hacer phishing con apariencia de dominio confiable, o encadenarlo con otros trucos de sesión.
+- **Clasificación:** Requiere decisión/spec nueva. No encaja como "arreglo de patrón ya conocido" porque no hay precedente de validación de redirects en el repo (SPEC 09/10 no lo mencionan), pero es una corrección de bajo riesgo y acotada a un solo archivo, no un cambio de comportamiento visible al usuario legítimo.
+- **Arreglo recomendado (no aplicado):** Restringir `next` a una ruta relativa del mismo origen antes de usarla, por ejemplo:
+  ```ts
+  const rawNext = searchParams.get("next");
+  const next =
+    rawNext &&
+    rawNext.startsWith("/") &&
+    !rawNext.startsWith("//") &&
+    !rawNext.includes("://")
+      ? rawNext
+      : "/games";
+  ```
+  y aplicar la misma validación en el fallback de error (`/auth?error=...` ya es un literal fijo, no necesita cambio). Alternativamente, usar `new URL(next, origin)` y comparar `.origin` contra el propio antes de redirigir.
+- **Notas:** Es el hallazgo más relevante de esta corrida por estar directamente en la superficie de autenticación pedida por el usuario. Se recomienda priorizarlo sobre los demás "Requiere decisión/spec nueva" ya conocidos, dado que es explotable en la ruta de callback de los tres flujos de SPEC 09.
